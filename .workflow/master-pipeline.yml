@@ -18,7 +18,10 @@ stages:
         displayName: Docker编译+打包
         type: cert
         certificate: d674c150-47d6-013f-5a1a-3626067e6057
-        tag: oa-nsdiy/backend:${GITEE_PIPELINE_BUILD_NUMBER}
+        # 固定打 latest 标签，便于部署侧稳定拉取。
+        # 若 Gitee Go 支持多标签，可改为: oa-nsdiy/backend:latest,oa-nsdiy/backend:${GITEE_PIPELINE_BUILD_NUMBER}
+        # (此项依赖平台特性，需在 Gitee Go 控制台验证语法后再调整)
+        tag: oa-nsdiy/backend:latest
         dockerfile: ./deploy/Dockerfile
         context: .
         isCache: false

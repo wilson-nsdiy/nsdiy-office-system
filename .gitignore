@@ -36,6 +36,7 @@ yarn-error.log*
 
 # Docker
 docker-compose.override.yml
+deploy/data/
 
 # Testing
 coverage/

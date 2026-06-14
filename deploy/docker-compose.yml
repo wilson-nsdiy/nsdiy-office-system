@@ -1,39 +1,42 @@
 # =============================================================================
-# OA-NSDIY Docker Compose Configuration (Single Image)
+# OA-NSDIY Docker Compose Configuration (Remote Image + Local Data Volume)
 # =============================================================================
-# Quick Start:
-#   1. cp config.example.yaml config.yaml && 修改 config.yaml 中的 jwt.secret
-#   2. docker-compose up -d
-#   3. Access: http://localhost:3001
+# 部署流程:
+#   1. (首次) bash docker-deploy.sh   # 自动生成 .env (含随机密钥)
+#   2. 编辑 .env: 填 IMAGE_REGISTRY 等必填项
+#   3. docker-compose up -d
+#   4. 访问: http://localhost:3001
 #
-# 配置文件通过 CONFIG_PATH 启动参数传入:
-#   CONFIG_PATH=/app/config.yaml (容器内路径，需要 volume 挂载)
+# 配置通过 env_file: .env 注入容器进程环境，应用经 viper.AutomaticEnv 读取。
+# 数据目录使用本地目录映射 (./data)，便于整目录打包迁移:
+#   tar czf oa-nsdiy-deploy.tar.gz docker-compose.yml .env data/
+#
+# 本地开发 (无远程仓库时): 将下方 image 行注释、取消 build 块的注释即可。
 # =============================================================================
 
 services:
   oa-nsdiy:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-      args:
-        VERSION: ${VERSION:-dev}
-    image: oa-nsdiy:latest
+    # ---- 远程镜像模式 (生产部署) ----
+    # IMAGE_REGISTRY 在 .env 中配置，例如 registry.cn-hangzhou.aliyuncs.com/your-ns
+    image: "${IMAGE_REGISTRY:?IMAGE_REGISTRY is required in .env}/oa-nsdiy/backend:${IMAGE_TAG:-latest}"
+    # ---- 本地构建模式 (开发时取消下面注释，注释掉上面的 image 行) ----
+    # build:
+    #   context: ..
+    #   dockerfile: deploy/Dockerfile
+    #   args:
+    #     VERSION: ${VERSION:-dev}
     container_name: oa-nsdiy
     restart: unless-stopped
     ports:
       - "${SERVER_PORT:-3001}:3001"
-    environment:
-      - CONFIG_PATH=/app/config.yaml
+    env_file:
+      - .env
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
-      - data:/app/data
+      # 本地目录映射，方便整目录迁移
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
-
-volumes:
-  data:
-    driver: local

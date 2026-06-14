@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
 
@@ -126,7 +127,18 @@ func Load() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	// Register a comma-separated StringToSlice decode hook so that env vars
+	// like CORS_ALLOW_ORIGINS=http://a,http://b are split into []string
+	// correctly. Without this, AutomaticEnv returns the raw string and the
+	// slice field ends up as a single-element ["a,b"]. The existing default
+	// decode hook (which includes StringToTimeDurationHookFunc) is preserved
+	// via ComposeDecodeHookFunc.
+	if err := viper.Unmarshal(&cfg, func(dc *mapstructure.DecoderConfig) {
+		dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			dc.DecodeHook,
+			mapstructure.StringToSliceHookFunc(","),
+		)
+	}); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 

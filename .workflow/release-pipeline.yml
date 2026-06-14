@@ -1,0 +1,99 @@
+# =============================================================================
+# OA-NSDIY Release Pipeline (二进制制品构建)
+# =============================================================================
+# 触发方式: 推送 tag (如 v1.0.0) 时手动/自动触发
+# 作用: 构建前端 → 交叉编译 linux/amd64+arm64 二进制(嵌入前端) → 打包 tar.gz + checksums
+# 产出: pipeline artifact，供下载后手动上传到 Gitee Release 页面
+#
+# 使用方式:
+#   1. git tag v1.0.0 && git push origin v1.0.0  (或在 Gitee Go 手动触发)
+#   2. 流水线完成后，从 Gitee Go 产物下载 oa-nsdiy_*.tar.gz 和 checksums.txt
+#   3. 到 https://gitee.com/zhouws-chn/oa-nsdiy/releases/new 创建 Release (tag 与推送的 tag 一致)
+#   4. 把 tar.gz 和 checksums.txt 作为附件上传
+#   5. 用户即可通过 install.sh 一键安装
+# =============================================================================
+
+name: release-pipeline
+displayName: 二进制制品构建
+
+triggers:
+  push:
+    include:
+      - refs/tags/v*
+
+stages:
+  - name: build
+    displayName: 构建二进制制品
+    steps:
+      # ---- Step 1: 构建前端 ----
+      - step: shell@bash
+        name: build_frontend
+        displayName: 构建前端 (Next.js Static Export)
+        inputs:
+          script: |
+            set -e
+            cd frontend
+            # 使用国内镜像加速 (与 Dockerfile 一致)
+            npm config set registry https://registry.npmmirror.com
+            npm ci
+            npm run build
+            # 将产物复制到后端 embed 目录
+            mkdir -p ../backend/internal/web/dist
+            cp -r out/* ../backend/internal/web/dist/
+        services:
+          - name: nodejs
+            version: "20"
+
+      # ---- Step 2: 交叉编译后端 (嵌入前端) + 打包 ----
+      - step: shell@bash
+        name: build_binaries
+        displayName: 交叉编译二进制 + 打包
+        depends_on: build_frontend
+        inputs:
+          script: |
+            set -e
+            cd backend
+
+            # 版本号: 从 tag 提取 (CI 环境变量)，无则用 git describe
+            VERSION="${GITEE_BRANCH:-}"
+            [ -z "$VERSION" ] && VERSION="$(git describe --tags --always 2>/dev/null || echo v0.0.0)"
+            VERSION_NUM="${VERSION#v}"
+            echo "Building version: $VERSION ($VERSION_NUM)"
+
+            export GOPROXY=https://goproxy.cn,direct
+            export GOSUMDB=sum.golang.google.cn
+            export CGO_ENABLED=0
+
+            mkdir -p ../dist
+
+            # 生成 Ent 代码 (确保 ent 生成代码是最新的)
+            go generate ./...
+
+            # 交叉编译两个架构，带 embed 标签内嵌前端
+            for ARCH in amd64 arm64; do
+              echo "==> Building linux/$ARCH ..."
+              GOOS=linux GOARCH=$ARCH go build -tags embed -ldflags="-s -w -X main.Version=$VERSION" \
+                -o "../dist/oa-nsdiy_${VERSION_NUM}_linux_${ARCH}/oa-nsdiy" ./cmd/server
+              # 写入版本文件 (供 install.sh 读取)
+              echo "$VERSION" > "../dist/oa-nsdiy_${VERSION_NUM}_linux_${ARCH}/.version"
+              # 打包
+              tar -czf "../dist/oa-nsdiy_${VERSION_NUM}_linux_${ARCH}.tar.gz" \
+                -C "../dist" "oa-nsdiy_${VERSION_NUM}_linux_${ARCH}"
+            done
+
+            # 生成 checksums.txt
+            cd ../dist
+            sha256sum *.tar.gz > checksums.txt
+            cat checksums.txt
+        services:
+          - name: golang
+            version: "1.25"
+
+      # ---- Step 3: 上传制品 (pipeline artifact) ----
+      - step: publishArtifacts@release
+        name: publish_artifacts
+        displayName: 上传制品
+        depends_on: build_binaries
+        inputs:
+          artifactPath: dist
+          artifactName: oa-nsdiy-release
