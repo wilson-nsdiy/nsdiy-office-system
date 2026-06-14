@@ -33,19 +33,32 @@ func Init(driver, source string) error {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Enable WAL mode for better concurrent performance
-	if _, err = db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		logger.S().Warnw("Failed to enable WAL mode", "error", err)
+	// SQLite (WAL) allows concurrent reads but only a single writer at a time.
+	// Pooling multiple connections causes "database is locked" (SQLITE_BUSY)
+	// on concurrent writes. Limit the pool to one connection so writes
+	// serialize within the process instead of failing.
+	// Also set busy_timeout as a safety net so a writer briefly waits for the
+	// lock instead of erroring immediately.
+	if driver == "sqlite" {
+		// Enable WAL mode for better concurrent read performance
+		if _, err = db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+			logger.S().Warnw("Failed to enable WAL mode", "error", err)
+		}
+		// Enable foreign keys
+		if _, err = db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+			logger.S().Warnw("Failed to enable foreign keys", "error", err)
+		}
+		// Wait up to 5s for a write lock instead of failing immediately
+		if _, err = db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+			logger.S().Warnw("Failed to set busy_timeout", "error", err)
+		}
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+	} else {
+		// Other drivers (e.g. PostgreSQL): use a real connection pool.
+		db.SetMaxOpenConns(25)
+		db.SetMaxIdleConns(5)
 	}
-
-	// Enable foreign keys
-	if _, err = db.Exec("PRAGMA foreign_keys=ON"); err != nil {
-		logger.S().Warnw("Failed to enable foreign keys", "error", err)
-	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(1 * time.Minute)
 
