@@ -1,0 +1,73 @@
+# =============================================================================
+# OA-NSDIY 配置文件模板
+# =============================================================================
+# 复制为 config.yaml 后修改:
+#   cp config.example.yaml config.yaml
+#
+# Docker 部署时，通过 CONFIG_PATH 环境变量指定配置文件路径:
+#   CONFIG_PATH=/app/config.yaml
+#
+# 数据目录: /app/data (Docker 容器内固定)
+# SQLite 数据库路径和日志文件路径会基于 /app/data 自动推导
+# =============================================================================
+
+# 服务配置
+server:
+  host: "0.0.0.0"
+  port: 3001
+  mode: "release"                    # debug 或 release（控制 Gin 运行模式）
+  read_timeout: 30s
+  write_timeout: 30s
+
+# 数据库配置
+database:
+  driver: "sqlite"                    # sqlite 或 postgres
+  # SQLite: 文件路径（留空则自动推导为 /app/data/oa_nsdiy.db）
+  # PostgreSQL: 连接串，如 "host=localhost port=5432 user=postgres dbname=oa_nsdiy sslmode=disable"
+  source: ""
+
+# Redis 配置 (预留，当前未使用)
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+# JWT 认证配置
+jwt:
+  secret: "your-secret-key-change-in-production"   # 生产环境务必修改！生成: openssl rand -hex 32
+  access_expiry: "30m"               # Access Token 过期时间
+  refresh_expiry: "168h"             # Refresh Token 过期时间 (7天)
+
+# 日志配置
+log:
+  level: "info"                       # debug / info / warn / error
+  format: "json"                      # json 或 console
+  output:
+    to_stdout: true                   # 输出到标准输出（容器部署建议开启）
+    to_file: false                    # 输出到文件
+    # 日志文件路径（留空则自动推导为 /app/data/logs/oa-nsdiy.log）
+    file_path: ""
+  rotation:
+    max_size_mb: 100                  # 单个日志文件最大 MB
+    max_backups: 10                   # 保留的旧日志文件数
+    max_age_days: 7                   # 旧日志文件保留天数
+    compress: true                    # 压缩旧日志文件
+  caller: false                       # 日志中显示调用位置
+  service_name: "oa-nsdiy"           # 日志中的服务名标识
+
+# CORS 跨域配置
+# 单镜像部署时前后端同源，无需跨域；开发模式下前端 3000 端口需要
+cors:
+  allow_origins:
+    - "http://localhost:3000"         # 开发模式前端地址
+  allow_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allow_headers:
+    - "Content-Type"
+    - "Authorization"
+  allow_credentials: true

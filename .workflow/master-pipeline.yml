@@ -1,0 +1,30 @@
+version: '1.0'
+name: master-pipeline
+displayName: MasterPipeline
+triggers:
+  trigger: manual
+  push:
+    branches:
+      include:
+        - master
+stages:
+  - name: release
+    displayName: 构建发布
+    strategy: naturally
+    trigger: auto
+    steps:
+      - step: build@docker
+        name: build_docker_image
+        displayName: Docker编译+打包
+        type: cert
+        certificate: d674c150-47d6-013f-5a1a-3626067e6057
+        tag: oa-nsdiy/backend:${GITEE_PIPELINE_BUILD_NUMBER}
+        dockerfile: ./deploy/Dockerfile
+        context: .
+        isCache: false
+        processorType:
+          - amd64
+        parameter: {}
+        notify: []
+        strategy:
+          retry: '0'

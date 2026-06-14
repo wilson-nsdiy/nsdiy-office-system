@@ -1,0 +1,93 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - depguard
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+  settings:
+    depguard:
+      rules:
+        handler-no-repository:
+          list-mode: original
+          files:
+            - "**/internal/handler/**"
+          deny:
+            - pkg: oa-nsdiy/backend/internal/repository
+              desc: "handler must not import repository"
+        service-no-repository:
+          list-mode: original
+          files:
+            - "**/internal/service/**"
+          deny:
+            - pkg: oa-nsdiy/backend/internal/repository
+              desc: "service must not import repository"
+        handler-no-db:
+          list-mode: original
+          files:
+            - "**/internal/handler/**"
+          deny:
+            - pkg: database/sql
+              desc: "handler must not import database/sql"
+    gosec:
+      excludes:
+        - G101
+        - G103
+        - G104
+        - G115
+      severity: high
+      confidence: high
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+      disable-default-exclusions: true
+      exclude-functions:
+        - io/ioutil.ReadFile
+        - io.Copy(*bytes.Buffer)
+        - io.Copy(os.Stdout)
+        - fmt.Println
+        - fmt.Print
+        - fmt.Printf
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+      verbose: true
+    ineffassign:
+      check-escaping-errors: true
+    staticcheck:
+      dot-import-whitelist:
+        - fmt
+      initialisms: [ "ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "QPS", "RAM", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "GID", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS", "SIP", "RTP", "AMQP", "DB", "TS" ]
+      http-status-code-whitelist: [ "200", "400", "404", "500" ]
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1020
+        - -ST1021
+        - -ST1022
+    unused:
+      field-writes-are-uses: true
+      post-statements-are-reads: true
+      exported-fields-are-used: true
+      parameters-are-used: true
+      local-variables-are-used: false
+      generated-is-used: true
+
+formatters:
+  enable:
+    - gofmt
+  settings:
+    gofmt:
+      simplify: false
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+        - pattern: 'a[b:len(a)]'
+          replacement: 'a[b:]'
