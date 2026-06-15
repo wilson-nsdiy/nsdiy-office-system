@@ -9,7 +9,7 @@ triggers:
         - master
 stages:
   - name: build
-    displayName: 构建并嵌入前端
+    displayName: 构建前端
     strategy: naturally
     trigger: auto
     steps:
@@ -18,16 +18,13 @@ stages:
         displayName: 构建前端
         nodeVersion: 22.22.0
         commands:
-          - '# 设置NPM源，提升安装速度'
           - npm config set registry https://registry.npmmirror.com
-          - ''
-          - '# 进入前端目录执行构建 (本仓库为 monorepo，package.json 在 frontend/)'
           - cd frontend
           - npm install && npm run build
-          - ''
-          - '# 将前端产物复制到后端 embed 目录'
-          - mkdir -p ../backend/internal/web/dist
-          - cp -r out/* ../backend/internal/web/dist/
+        artifacts:
+          - name: FRONTEND_ARTIFACT
+            path:
+              - frontend/out
         caches:
           - ~/.npm
         notify: []
@@ -43,10 +40,11 @@ stages:
         name: build_golang
         displayName: build_backend
         golangVersion: '1.24'
+        dependArtifact: FRONTEND_ARTIFACT
         commands:
-          - '# 默认使用goproxy.cn'
           - export GOPROXY=https://goproxy.cn
-          - '# 启用 embed 构建标签，将前端产物嵌入到二进制中'
+          - mkdir -p backend/internal/web/dist
+          - cp -r frontend/out/* backend/internal/web/dist/
           - cd backend
           - CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
         artifacts:
