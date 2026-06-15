@@ -53,7 +53,7 @@ stages:
         artifacts:
           - name: BACKEND_ARTIFACT
             path:
-              - ./bin
+              - backend/bin
         caches:
           - /go/pkg/mod
         notify: []
