@@ -47,6 +47,7 @@ stages:
           - '# 默认使用goproxy.cn'
           - export GOPROXY=https://goproxy.cn
           - '# 启用 embed 构建标签，将前端产物嵌入到二进制中'
+          - cd backend
           - CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
         artifacts:
           - name: BACKEND_ARTIFACT
