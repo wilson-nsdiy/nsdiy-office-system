@@ -31,11 +31,28 @@ stages:
         strategy:
           retry: '0'
       - step: build@golang
+        name: build_golang
+        displayName: Golang 构建
+        golangVersion: '1.24'
+        commands:
+          - '# 默认使用goproxy.cn'
+          - export GOPROXY=https://goproxy.cn
+          - '# 输入你的构建命令'
+          - make build
+        artifacts:
+          - name: BUILD_ARTIFACT
+            path:
+              - ./output
+        caches:
+          - /go/pkg/mod
+        notify: []
+        strategy:
+          retry: '0'
+        dependsOn: build_frontend
+      - step: build@golang
         name: build_backend
         displayName: 构建后端
         golangVersion: '1.24'
-        dependStep: build_frontend
-        dependArtifact: FRONTEND_ARTIFACT
         commands:
           - export GOPROXY=https://goproxy.cn
           - ls -la frontend/out/
