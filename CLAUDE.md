@@ -43,7 +43,7 @@ oa-nsdiy/
 ├── deploy/                  # Docker 部署配置
 │   ├── Dockerfile           # 多阶段构建
 │   ├── docker-compose.yml   # 容器编排
-│   └── config.example.yaml  # 配置文件模板
+│   └── .env.example         # 环境变量配置模板
 └── .workflow/               # CI/CD 流水线
 ```
 
@@ -88,7 +88,7 @@ oa-nsdiy/
 
 ### 通用
 
-- **⚠️ 必须提供 `config.yaml` 配置文件**：程序本身不包含默认配置，开发和生产环境都需要
+- **⚠️ 必须提供 `.env` 配置文件**：程序本身不包含默认配置，开发和生产环境都需要
 - 数据库文件不提交到 Git
 - 前端使用 npm，不用 pnpm 或 yarn
 - `package-lock.json` 需要提交到仓库
@@ -101,7 +101,7 @@ cd backend
 go mod download          # 安装依赖
 make generate            # 生成 Ent 代码
 make dev                 # 开发模式运行
-make build               # 构建
+make build               # 构建 (开发模式，不含前端)
 make test                # 运行测试
 make lint                # golangci-lint 检查
 make migrate-new         # 创建新的迁移文件
@@ -110,24 +110,43 @@ make migrate-new         # 创建新的迁移文件
 cd frontend
 npm install              # 安装依赖
 npm run dev              # 开发模式运行
-npm run build            # 构建
+npm run build            # 构建 (静态导出到 out/)
 npx tsc --noEmit         # 类型检查
+
+# 生产构建 (前端嵌入后端)
+cd frontend && npm install && npm run build
+cp -r out/ ../backend/internal/web/dist
+cd ../backend
+CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
 
 # Docker
 make docker-up           # 启动服务
 make docker-down         # 停止服务
 ```
 
+## 构建模式
+
+### 开发模式 (默认)
+- 前后端独立运行
+- `make build` 构建不含前端的后端二进制
+- Next.js 开发服务器代理 API 请求
+
+### 生产模式 (`-tags embed`)
+- 前端静态文件通过 Go `embed` 嵌入后端二进制
+- 构建步骤: 前端 `npm install && npm run build` → 复制到 `backend/internal/web/dist/` → `go build -tags embed`
+- 单一进程同时服务 API 和前端
+- 相关代码: `internal/web/embed_on.go` (启用) / `embed_off.go` (禁用)
+
 ## 配置
 
-**⚠️ 必须提供 `config.yaml` 配置文件**：程序本身不包含默认配置。
+**⚠️ 必须提供 `.env` 配置文件**：程序本身不包含默认配置。
 
 | 场景 | 配置文件位置 | 生效方式 |
 |------|-------------|----------|
-| Docker 部署 | `deploy/config.yaml` | volume 挂载到 `/app/config.yaml` |
-| 开发环境 | `config.yaml`（项目根目录）| Viper 自动搜索 |
+| Docker 部署 | `deploy/.env` | docker-compose env_file 注入 |
+| 开发环境 | `.env`（项目根目录）| viper.AutomaticEnv 读取 |
 
-后端配置文件 `config.yaml` (从 `config.example.yaml` 复制)，主要配置:
+后端配置文件 `.env` (从 `.env.example` 复制)，主要配置:
 
 - `server`: 监听地址和端口 (默认 3001)、运行模式 (debug/release)
 - `database`: 驱动和连接串（SQLite 留空自动推导）

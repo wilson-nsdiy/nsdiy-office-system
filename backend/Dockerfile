@@ -23,7 +23,6 @@ RUN addgroup -g 1000 app && \
 WORKDIR /app
 
 COPY --from=builder --chown=app:app /app/server .
-COPY --from=builder --chown=app:app /app/config.example.yaml .
 
 RUN mkdir -p /app/data && chown app:app /app/data
 

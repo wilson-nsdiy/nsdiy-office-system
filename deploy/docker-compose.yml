@@ -3,7 +3,7 @@
 # =============================================================================
 # 部署流程:
 #   1. (首次) bash docker-deploy.sh   # 自动生成 .env (含随机密钥)
-#   2. 编辑 .env: 填 IMAGE_REGISTRY 等必填项
+#   2. 编辑 .env: 填写必填项 (JWT_SECRET 等)
 #   3. docker-compose up -d
 #   4. 访问: http://localhost:3001
 #
@@ -17,8 +17,7 @@
 services:
   oa-nsdiy:
     # ---- 远程镜像模式 (生产部署) ----
-    # IMAGE_REGISTRY 在 .env 中配置，例如 registry.cn-hangzhou.aliyuncs.com/your-ns
-    image: "${IMAGE_REGISTRY:?IMAGE_REGISTRY is required in .env}/oa-nsdiy/backend:${IMAGE_TAG:-latest}"
+    image: crpi-9oekzb4k1mzi4t5q.cn-shenzhen.personal.cr.aliyuncs.com/oa-nsdiy/backend:latest
     # ---- 本地构建模式 (开发时取消下面注释，注释掉上面的 image 行) ----
     # build:
     #   context: ..

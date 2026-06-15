@@ -54,7 +54,6 @@ oa-nsdiy/
 │   ├── .env.example            # 环境变量配置模板（推荐，部署时复制为 .env）
 │   ├── docker-deploy.sh        # Docker 部署准备脚本 (生成 .env + 密钥)
 │   ├── install.sh              # 脚本安装 (裸机/systemd，从 Gitee Release 拉取)
-│   ├── config.example.yaml     # YAML 配置模板（可选，高级配置 fallback）
 │   ├── commands.sh             # Linux/macOS 构建脚本
 │   └── commands.ps1            # Windows 构建脚本
 ```
@@ -107,11 +106,7 @@ oa-nsdiy/
 应用所有字段都有默认值，可不提供任何配置直接启动。如需修改（如 JWT 密钥），二选一：
 
 ```bash
-# 方式 A：环境变量（推荐，与生产部署一致）
 cp deploy/.env.example .env       # 由 shell/IDE 加载，或手动 export
-
-# 方式 B：YAML（开发时方便）
-cp deploy/config.example.yaml config.yaml
 ```
 
 ### 2. 后端
@@ -161,7 +156,7 @@ curl -fsSL https://gitee.com/zhouws-chn/oa-nsdiy/raw/master/deploy/install.sh | 
 - 监听地址、端口（默认 `0.0.0.0:3001`）
 
 然后自动完成：
-1. 下载最新版本二进制（含 sha256 校验）→ `/opt/oa-nsdiy/oa-nsdiy`
+1. 下载最新版本二进制（含 sha256 校验）→ `/opt/oa-nsdiy/server`
 2. 创建系统用户 `oa-nsdiy`
 3. 生成 `.env`（含随机 `JWT_SECRET`）→ `/opt/oa-nsdiy/.env`
 4. 注册并启动 systemd 服务（开机自启）
@@ -169,7 +164,7 @@ curl -fsSL https://gitee.com/zhouws-chn/oa-nsdiy/raw/master/deploy/install.sh | 
 #### 安装后步骤
 
 ```bash
-# 1. 编辑配置（修改 JWT_SECRET、CORS_ALLOW_ORIGINS 等）
+# 1. 编辑配置（修改 JWT_SECRET、CORS_ENABLED、CORS_ALLOW_ORIGINS 等）
 sudo nano /opt/oa-nsdiy/.env
 
 # 2. 重启服务使配置生效
@@ -224,18 +219,16 @@ cd deploy
 # 一键生成 .env（自动填充随机 JWT_SECRET），或手动 cp .env.example .env
 bash docker-deploy.sh
 
-# 编辑 .env，至少填写：
-#   IMAGE_REGISTRY       （镜像仓库地址，见下方说明）
+# 编辑 .env，必须填写：
+#   JWT_SECRET           （随机密钥，生成: openssl rand -hex 32）
+#   CORS_ENABLED         （单镜像同源部署时可设为 false）
 #   CORS_ALLOW_ORIGINS   （真实前端域名；单机同源可保持默认）
 nano .env
 ```
 
-> **镜像仓库地址（`IMAGE_REGISTRY`）**：取决于 CI 推送目标。当前 `master` 分支流水线推送到阿里云 ACR，对应填入 `crpi-9oekzb4k1mzi4t5q.cn-shenzhen.personal.cr.aliyuncs.com`；若改用其它仓库则填其地址（不含镜像名/标签）。
-
 #### 2. 拉取镜像并启动
 
 ```bash
-# docker-compose 会根据 .env 的 IMAGE_REGISTRY 拼出完整镜像名并拉取
 docker-compose up -d
 ```
 
@@ -259,7 +252,6 @@ curl http://localhost:3001/api/health
 |------|------|------|
 | 配置 | `deploy/.env` | 由 `env_file` 注入容器，应用经 viper.AutomaticEnv 读取 |
 | 数据 | `deploy/data/` | SQLite 数据库 + 日志，本地目录映射便于整体打包迁移 |
-| YAML fallback | `deploy/config.example.yaml` | 仅当需要更复杂配置时挂载，并设 `CONFIG_PATH` 指向它 |
 
 **Docker 镜像构建流程（Dockerfile 多阶段构建）：**
 
@@ -289,8 +281,6 @@ cp -r out/ ../backend/internal/web/dist
 
 # 3. 构建后端 (带 embed 标签)
 cd ../backend
-go mod download
-make generate
 CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
 
 # 4. 运行
@@ -371,8 +361,7 @@ Linux/macOS 使用 `./deploy/commands.sh`，Windows 使用 `.\deploy\commands.ps
 |------|----------|------|
 | Docker 部署 | `deploy/.env` | 经 docker-compose 的 `env_file` 注入容器（见方式二） |
 | 脚本安装 | `/opt/oa-nsdiy/.env` | 经 systemd 的 `EnvironmentFile` 注入（见方式一） |
-| 高级配置 | 挂载 `config.yaml` + 设 `CONFIG_PATH` | 需要复杂结构（如多值数组）时回退 YAML |
-| 开发环境 | 项目根目录 `config.yaml` | Viper 自动搜索；或直接 `export` 环境变量 |
+| 开发环境 | 项目根目录 `.env` | 由 shell/IDE 加载；或直接 `export` 环境变量 |
 
 **配置模板：**
 
@@ -380,9 +369,6 @@ Linux/macOS 使用 `./deploy/commands.sh`，Windows 使用 `.\deploy\commands.ps
 # Docker / 脚本部署（环境变量）
 cp deploy/.env.example deploy/.env      # Docker
 cp deploy/.env.example .env             # 本地直跑时由 shell/IDE 加载
-
-# YAML fallback（可选，仅复杂配置需要）
-cp deploy/config.example.yaml config.yaml
 ```
 
 完整变量清单及说明见 `deploy/.env.example`（每个字段都标注了 `[必须修改]`/`[建议修改]`/`[保持默认]`）。
@@ -409,14 +395,12 @@ LOG_LEVEL=info
 LOG_FORMAT=json
 LOG_OUTPUT_TO_STDOUT=true
 
-# CORS（逗号分隔多个值）
+# CORS（单镜像同源部署时可设为 false 关闭）
+CORS_ENABLED=true
 CORS_ALLOW_ORIGINS=http://localhost:3000
 CORS_ALLOW_METHODS=GET,POST,PUT,DELETE,OPTIONS
 CORS_ALLOW_HEADERS=Content-Type,Authorization
 ```
-
-> **YAML fallback 说明**：环境变量足以覆盖全部配置，无需 YAML。仅当你想用 YAML 时，挂载它并设 `CONFIG_PATH=/app/config.yaml`（或放在 Viper 搜索路径之一：`.`、`./config`、`/app`、`/etc/oa-nsdiy`）。环境变量始终覆盖 YAML 同名字段。
-
 
 **生成 JWT 密钥：**
 

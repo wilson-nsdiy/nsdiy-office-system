@@ -7,7 +7,7 @@
 #   - 自动生成 JWT_SECRET 随机密钥
 #   - 创建本地数据目录 data/
 #
-# 运行后请编辑 .env 填写必填项 (尤其 IMAGE_REGISTRY)，然后:
+# 运行后请编辑 .env 填写必填项 (JWT_SECRET 等)，然后:
 #   docker-compose up -d
 # =============================================================================
 
@@ -110,7 +110,7 @@ main() {
     echo ""
     echo "下一步:"
     echo "  1. 编辑 .env，填写以下必填项:"
-    echo "     - IMAGE_REGISTRY      (Gitee 容器仓库地址)"
+    echo "     - JWT_SECRET          (随机密钥，生成: openssl rand -hex 32)"
     echo "     - DATABASE_SOURCE     (若使用 PostgreSQL)"
     echo "     - CORS_ALLOW_ORIGINS  (真实前端域名)"
     echo ""

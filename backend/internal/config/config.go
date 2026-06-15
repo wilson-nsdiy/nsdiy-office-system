@@ -69,6 +69,7 @@ type LogRotationConfig struct {
 }
 
 type CORSConfig struct {
+	Enabled          bool     `mapstructure:"enabled"`
 	AllowOrigins     []string `mapstructure:"allow_origins"`
 	AllowMethods     []string `mapstructure:"allow_methods"`
 	AllowHeaders     []string `mapstructure:"allow_headers"`
@@ -186,6 +187,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.caller", false)
 	v.SetDefault("log.service_name", "oa-nsdiy")
 
+	v.SetDefault("cors.enabled", true)
 	v.SetDefault("cors.allow_origins", []string{"http://localhost:3000"})
 	v.SetDefault("cors.allow_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	v.SetDefault("cors.allow_headers", []string{"Content-Type", "Authorization"})

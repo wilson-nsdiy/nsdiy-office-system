@@ -8,26 +8,69 @@ triggers:
       include:
         - master
 stages:
-  - name: release
-    displayName: 构建发布
+  - name: build
+    displayName: 构建前端
     strategy: naturally
     trigger: auto
     steps:
-      - step: build@docker
-        name: build_docker_image
-        displayName: Docker编译+打包
-        type: cert
-        certificate: d674c150-47d6-013f-5a1a-3626067e6057
-        # 固定打 latest 标签，便于部署侧稳定拉取。
-        # 若 Gitee Go 支持多标签，可改为: oa-nsdiy/backend:latest,oa-nsdiy/backend:${GITEE_PIPELINE_BUILD_NUMBER}
-        # (此项依赖平台特性，需在 Gitee Go 控制台验证语法后再调整)
-        tag: oa-nsdiy/backend:latest
-        dockerfile: ./deploy/Dockerfile
-        context: .
-        isCache: false
-        processorType:
-          - amd64
-        parameter: {}
+      - step: build@nodejs
+        name: build_frontend
+        displayName: 构建前端
+        nodeVersion: 22.22.0
+        commands:
+          - npm config set registry https://registry.npmmirror.com
+          - cd frontend
+          - npm install && npm run build
+        artifacts:
+          - name: FRONTEND_ARTIFACT
+            path:
+              - frontend/out
+        caches:
+          - ~/.npm
+        notify: []
+        strategy:
+          retry: '0'
+  - name: stage-a5c73f08
+    displayName: 构建后端
+    strategy: naturally
+    trigger: auto
+    executor: []
+    steps:
+      - step: build@golang
+        name: build_backend
+        displayName: 构建后端
+        golangVersion: '1.24'
+        dependArtifact: FRONTEND_ARTIFACT
+        commands:
+          - export GOPROXY=https://goproxy.cn
+          - curl -o frontend_artifact.tar.gz "$FRONTEND_ARTIFACT"
+          - tar -xzf frontend_artifact.tar.gz
+          - mkdir -p backend/internal/web/dist
+          - cp -r out/* backend/internal/web/dist/
+          - ls -la backend/internal/web/dist/
+          - cd backend
+          - CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
+          - cp ../deploy/.env.example bin/
+        artifacts:
+          - name: BACKEND_ARTIFACT
+            path:
+              - backend/bin
+        caches:
+          - /go/pkg/mod
+        notify: []
+        strategy:
+          retry: '0'
+  - name: publish
+    displayName: 上传制品
+    strategy: naturally
+    trigger: auto
+    executor: []
+    steps:
+      - step: publish@general_artifacts
+        name: publish_backend
+        displayName: 上传后端制品
+        dependArtifact: BACKEND_ARTIFACT
+        artifactName: oa-nsdiy
         notify: []
         strategy:
           retry: '0'
