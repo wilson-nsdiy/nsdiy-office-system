@@ -289,8 +289,6 @@ cp -r out/ ../backend/internal/web/dist
 
 # 3. 构建后端 (带 embed 标签)
 cd ../backend
-go mod download
-make generate
 CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
 
 # 4. 运行

@@ -114,10 +114,10 @@ npm run build            # 构建 (静态导出到 out/)
 npx tsc --noEmit         # 类型检查
 
 # 生产构建 (前端嵌入后端)
-cd frontend && npm run build
+cd frontend && npm install && npm run build
 cp -r out/ ../backend/internal/web/dist
 cd ../backend
-go build -tags embed -o bin/server ./cmd/server
+CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
 
 # Docker
 make docker-up           # 启动服务
@@ -133,7 +133,7 @@ make docker-down         # 停止服务
 
 ### 生产模式 (`-tags embed`)
 - 前端静态文件通过 Go `embed` 嵌入后端二进制
-- 构建步骤: 前端 `npm run build` → 复制到 `backend/internal/web/dist/` → `go build -tags embed`
+- 构建步骤: 前端 `npm install && npm run build` → 复制到 `backend/internal/web/dist/` → `go build -tags embed`
 - 单一进程同时服务 API 和前端
 - 相关代码: `internal/web/embed_on.go` (启用) / `embed_off.go` (禁用)
 

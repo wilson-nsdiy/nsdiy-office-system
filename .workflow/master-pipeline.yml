@@ -23,8 +23,7 @@ stages:
           - ''
           - '# 进入前端目录执行构建 (本仓库为 monorepo，package.json 在 frontend/)'
           - cd frontend
-          - '# 使用 npm ci 保证与 package-lock.json 一致'
-          - npm ci && npm run build
+          - npm install && npm run build
           - ''
           - '# 将前端产物复制到后端 embed 目录'
           - mkdir -p ../backend/internal/web/dist
@@ -34,7 +33,7 @@ stages:
         notify: []
         strategy:
           retry: '0'
-  - name: stage-3545984e
+  - name: build_backend
     displayName: 后端编译
     strategy: naturally
     trigger: auto
@@ -47,12 +46,12 @@ stages:
         commands:
           - '# 默认使用goproxy.cn'
           - export GOPROXY=https://goproxy.cn
-          - '# 输入你的构建命令'
-          - make build
+          - '# 启用 embed 构建标签，将前端产物嵌入到二进制中'
+          - CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
         artifacts:
-          - name: BUILD_ARTIFACT
+          - name: BACKEND_ARTIFACT
             path:
-              - ./output
+              - ./bin
         caches:
           - /go/pkg/mod
         notify: []
