@@ -101,7 +101,7 @@ cd backend
 go mod download          # 安装依赖
 make generate            # 生成 Ent 代码
 make dev                 # 开发模式运行
-make build               # 构建
+make build               # 构建 (开发模式，不含前端)
 make test                # 运行测试
 make lint                # golangci-lint 检查
 make migrate-new         # 创建新的迁移文件
@@ -110,13 +110,32 @@ make migrate-new         # 创建新的迁移文件
 cd frontend
 npm install              # 安装依赖
 npm run dev              # 开发模式运行
-npm run build            # 构建
+npm run build            # 构建 (静态导出到 out/)
 npx tsc --noEmit         # 类型检查
+
+# 生产构建 (前端嵌入后端)
+cd frontend && npm run build
+cp -r out/ ../backend/internal/web/dist
+cd ../backend
+go build -tags embed -o bin/server ./cmd/server
 
 # Docker
 make docker-up           # 启动服务
 make docker-down         # 停止服务
 ```
+
+## 构建模式
+
+### 开发模式 (默认)
+- 前后端独立运行
+- `make build` 构建不含前端的后端二进制
+- Next.js 开发服务器代理 API 请求
+
+### 生产模式 (`-tags embed`)
+- 前端静态文件通过 Go `embed` 嵌入后端二进制
+- 构建步骤: 前端 `npm run build` → 复制到 `backend/internal/web/dist/` → `go build -tags embed`
+- 单一进程同时服务 API 和前端
+- 相关代码: `internal/web/embed_on.go` (启用) / `embed_off.go` (禁用)
 
 ## 配置
 
