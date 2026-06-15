@@ -50,7 +50,7 @@ stages:
           - ls -la backend/internal/web/dist/
           - cd backend
           - CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
-          - cp ../deploy/config.example.yaml bin/
+          - cp ../deploy/.env.example bin/
         artifacts:
           - name: BACKEND_ARTIFACT
             path:

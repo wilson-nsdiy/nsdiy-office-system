@@ -43,7 +43,7 @@ oa-nsdiy/
 ├── deploy/                  # Docker 部署配置
 │   ├── Dockerfile           # 多阶段构建
 │   ├── docker-compose.yml   # 容器编排
-│   └── config.example.yaml  # 配置文件模板
+│   └── .env.example         # 环境变量配置模板
 └── .workflow/               # CI/CD 流水线
 ```
 
@@ -88,7 +88,7 @@ oa-nsdiy/
 
 ### 通用
 
-- **⚠️ 必须提供 `config.yaml` 配置文件**：程序本身不包含默认配置，开发和生产环境都需要
+- **⚠️ 必须提供 `.env` 配置文件**：程序本身不包含默认配置，开发和生产环境都需要
 - 数据库文件不提交到 Git
 - 前端使用 npm，不用 pnpm 或 yarn
 - `package-lock.json` 需要提交到仓库
@@ -139,14 +139,14 @@ make docker-down         # 停止服务
 
 ## 配置
 
-**⚠️ 必须提供 `config.yaml` 配置文件**：程序本身不包含默认配置。
+**⚠️ 必须提供 `.env` 配置文件**：程序本身不包含默认配置。
 
 | 场景 | 配置文件位置 | 生效方式 |
 |------|-------------|----------|
-| Docker 部署 | `deploy/config.yaml` | volume 挂载到 `/app/config.yaml` |
-| 开发环境 | `config.yaml`（项目根目录）| Viper 自动搜索 |
+| Docker 部署 | `deploy/.env` | docker-compose env_file 注入 |
+| 开发环境 | `.env`（项目根目录）| viper.AutomaticEnv 读取 |
 
-后端配置文件 `config.yaml` (从 `config.example.yaml` 复制)，主要配置:
+后端配置文件 `.env` (从 `.env.example` 复制)，主要配置:
 
 - `server`: 监听地址和端口 (默认 3001)、运行模式 (debug/release)
 - `database`: 驱动和连接串（SQLite 留空自动推导）

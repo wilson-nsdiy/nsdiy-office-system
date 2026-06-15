@@ -28,13 +28,15 @@ func NewServer(cfg *config.Config) *Server {
 	router.Use(middleware.Recovery())
 	router.Use(middleware.RequestLogger())
 
-	corsConfig := cors.Config{
-		AllowOrigins:     cfg.CORS.AllowOrigins,
-		AllowMethods:     cfg.CORS.AllowMethods,
-		AllowHeaders:     cfg.CORS.AllowHeaders,
-		AllowCredentials: cfg.CORS.AllowCredentials,
+	if cfg.CORS.Enabled {
+		corsConfig := cors.Config{
+			AllowOrigins:     cfg.CORS.AllowOrigins,
+			AllowMethods:     cfg.CORS.AllowMethods,
+			AllowHeaders:     cfg.CORS.AllowHeaders,
+			AllowCredentials: cfg.CORS.AllowCredentials,
+		}
+		router.Use(cors.New(corsConfig))
 	}
-	router.Use(cors.New(corsConfig))
 
 	// Serve embedded frontend (only active when built with -tags embed)
 	router.Use(web.ServeEmbeddedFrontend())
