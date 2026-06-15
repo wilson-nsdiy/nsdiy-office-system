@@ -34,9 +34,10 @@ stages:
         name: build_backend
         displayName: 构建后端
         golangVersion: '1.24'
-        dependArtifact: FRONTEND_ARTIFACT
         commands:
           - export GOPROXY=https://goproxy.cn
+          - curl -o frontend_artifact.tar.gz "$FRONTEND_ARTIFACT"
+          - tar -xzf frontend_artifact.tar.gz
           - ls -la frontend/out/
           - mkdir -p backend/internal/web/dist
           - cp -r frontend/out/* backend/internal/web/dist/
@@ -52,7 +53,7 @@ stages:
         notify: []
         strategy:
           retry: '0'
-        dependsOn: build_frontend
+        dependArtifact: FRONTEND_ARTIFACT
   - name: publish
     displayName: 上传制品
     strategy: naturally
