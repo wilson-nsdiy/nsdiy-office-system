@@ -43,8 +43,11 @@ stages:
         dependArtifact: FRONTEND_ARTIFACT
         commands:
           - export GOPROXY=https://goproxy.cn
+          - ls -la frontend/out/ || echo "frontend/out not found"
+          - ls -la . || echo "project root not found"
           - mkdir -p backend/internal/web/dist
           - cp -r frontend/out/* backend/internal/web/dist/
+          - ls -la backend/internal/web/dist/
           - cd backend
           - CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
         artifacts:
