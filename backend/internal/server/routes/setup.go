@@ -21,6 +21,7 @@ func SetupRoutes(
 	mediaHandler *handler.MediaHandler,
 	fileHandler *handler.FileHandler,
 	apiTokenHandler *handler.ApiTokenHandler,
+	setupHandler *handler.SetupHandler,
 ) {
 	api := router.Group("/api")
 
@@ -29,7 +30,10 @@ func SetupRoutes(
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// Setup routes
+	// Setup routes (no auth required)
+	setupHandler.SetupRoutes(api)
+
+	// Protected routes
 	authHandler.SetupRoutes(api, authMiddleware)
 	roleHandler.SetupRoutes(api, authMiddleware, adminRBAC)
 	permissionHandler.SetupRoutes(api, authMiddleware, adminRBAC)

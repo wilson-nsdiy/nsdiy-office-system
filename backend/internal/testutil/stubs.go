@@ -14,6 +14,10 @@ import (
 
 type StubUserRepository struct{}
 
+func (s *StubUserRepository) Create(ctx context.Context, user *domain.User) error {
+	return fmt.Errorf("not implemented")
+}
+
 func (s *StubUserRepository) GetByID(ctx context.Context, id int) (*domain.User, error) {
 	return nil, fmt.Errorf("not found")
 }
@@ -38,6 +42,10 @@ func (s *StubUserRepository) ClearVerificationCode(ctx context.Context, id int) 
 	return fmt.Errorf("not implemented")
 }
 
+func (s *StubUserRepository) Count(ctx context.Context) (int, error) {
+	return 0, nil
+}
+
 // StubUserRepositoryWithData provides configurable user data for testing.
 type StubUserRepositoryWithData struct {
 	Users         map[int]*domain.User
@@ -46,6 +54,15 @@ type StubUserRepositoryWithData struct {
 	SetCodeErr    error
 	ClearCodeErr  error
 	UpdatePassErr error
+}
+
+func (s *StubUserRepositoryWithData) Create(ctx context.Context, user *domain.User) error {
+	if s.Err != nil {
+		return s.Err
+	}
+	user.ID = len(s.Users) + 1
+	s.Users[user.ID] = user
+	return nil
 }
 
 func (s *StubUserRepositoryWithData) GetByID(ctx context.Context, id int) (*domain.User, error) {
@@ -117,6 +134,13 @@ func (s *StubUserRepositoryWithData) ClearVerificationCode(ctx context.Context, 
 		return nil
 	}
 	return fmt.Errorf("not found")
+}
+
+func (s *StubUserRepositoryWithData) Count(ctx context.Context) (int, error) {
+	if s.Err != nil {
+		return 0, s.Err
+	}
+	return len(s.Users), nil
 }
 
 // =============================================================================

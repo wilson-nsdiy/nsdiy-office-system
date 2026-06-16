@@ -13,4 +13,5 @@ var ProviderSet = wire.NewSet(
 	NewMediaHandler,
 	NewFileHandler,
 	NewApiTokenHandler,
+	NewSetupHandler,
 )

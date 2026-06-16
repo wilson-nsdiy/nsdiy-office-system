@@ -12,7 +12,7 @@ OA-NSDIY 是工作室 OA 管理系统，采用 Go (Gin + Ent) 后端 + Next.js 1
 - **前端**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Axios
 - **数据库**: SQLite (默认), 可切换 PostgreSQL
 - **日志**: Zap + Lumberjack (结构化 + 轮转)
-- **测试**: in-memory SQLite + Ent Client (Repository 层)
+- **测试**: in-memory SQLite + Ent Client (Repository 层), unit/integration build tags
 - **包管理**: npm (前端), Go Modules (后端)
 - **CI/CD**: Gitee Go 流水线
 
@@ -61,6 +61,7 @@ oa-nsdiy/
 - 数据模型变更: 修改 `ent/schema/` 后执行 `make generate`
 - 密码存储使用 bcrypt + salt
 - JWT 双 Token 机制: Access Token (30m) + Refresh Token (168h)
+- Lint 规则强制分层: handler 禁止 import repository/ent/db, service 禁止 import repository/ent/db, middleware 禁止 import repository/ent/db
 
 ### Repository 模式
 
@@ -70,6 +71,14 @@ oa-nsdiy/
 - 分页: `q.Count(ctx)` + `q.Order().Limit().Offset().All(ctx)`
 - 关联加载: `WithXxx()` 替代 LEFT JOIN (如 `WithAuthor()`, `WithGroup()`)
 - 错误处理: 直接返回 Ent 错误，不做 sql.ErrNoRows 转换
+
+### 测试规范
+
+- 使用 `//go:build unit` 或 `//go:build integration` 构建标签分层
+- Service 层测试: 使用 `testutil` 包中的 stub (如 `StubUserRepositoryWithData`)，不需要数据库
+- Repository 层测试: 使用 `setupTestDB(t)` 创建 in-memory SQLite + Ent Client
+- Handler 层测试: 使用 `testutil.NewTestContext()` 或 `testutil.NewTestContextWithJSON()` 创建测试上下文
+- 运行命令: `make test-unit` (仅 unit 标签) / `make test-race` (含竞态检测)
 
 ### Service 错误处理
 

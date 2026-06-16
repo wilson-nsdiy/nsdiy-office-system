@@ -16,12 +16,14 @@ import (
 
 // UserRepository defines the interface for user data access required by AuthService.
 type UserRepository interface {
+	Create(ctx context.Context, user *domain.User) error
 	GetByID(ctx context.Context, id int) (*domain.User, error)
 	GetByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	UpdatePassword(ctx context.Context, id int, salt, hashedPassword string) error
 	SetVerificationCode(ctx context.Context, id int, code string, expiresAt time.Time) error
 	ClearVerificationCode(ctx context.Context, id int) error
+	Count(ctx context.Context) (int, error)
 }
 
 type AuthService struct {
@@ -94,6 +96,30 @@ func (s *AuthService) GetUserByID(ctx context.Context, id int) (*UserDTO, error)
 		return nil, err
 	}
 	return userToDTO(u), nil
+}
+
+type CreateUserInput struct {
+	Username       string
+	Email          string
+	Nickname       *string
+	Salt           string
+	HashedPassword string
+	UserType       string
+	IsActive       bool
+}
+
+func (s *AuthService) CreateUser(ctx context.Context, input *CreateUserInput) error {
+	user := &domain.User{
+		Username:       input.Username,
+		Email:          input.Email,
+		Nickname:       input.Nickname,
+		Salt:           input.Salt,
+		HashedPassword: input.HashedPassword,
+		UserType:       input.UserType,
+		IsActive:       input.IsActive,
+		TokenVersion:   1,
+	}
+	return s.userRepo.Create(ctx, user)
 }
 
 type Claims struct {
@@ -204,6 +230,14 @@ func (s *AuthService) ValidatePasswordStrength(ctx context.Context, password str
 func (s *AuthService) HashToken(ctx context.Context, token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
+}
+
+func (s *AuthService) HasAnyUser(ctx context.Context) (bool, error) {
+	count, err := s.userRepo.Count(ctx)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (s *AuthService) GenerateApiToken(ctx context.Context) (string, string, string) {
