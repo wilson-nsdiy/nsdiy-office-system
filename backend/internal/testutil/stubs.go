@@ -14,6 +14,10 @@ import (
 
 type StubUserRepository struct{}
 
+func (s *StubUserRepository) Create(ctx context.Context, user *domain.User) error {
+	return fmt.Errorf("not implemented")
+}
+
 func (s *StubUserRepository) GetByID(ctx context.Context, id int) (*domain.User, error) {
 	return nil, fmt.Errorf("not found")
 }
@@ -46,6 +50,15 @@ type StubUserRepositoryWithData struct {
 	SetCodeErr    error
 	ClearCodeErr  error
 	UpdatePassErr error
+}
+
+func (s *StubUserRepositoryWithData) Create(ctx context.Context, user *domain.User) error {
+	if s.Err != nil {
+		return s.Err
+	}
+	user.ID = len(s.Users) + 1
+	s.Users[user.ID] = user
+	return nil
 }
 
 func (s *StubUserRepositoryWithData) GetByID(ctx context.Context, id int) (*domain.User, error) {

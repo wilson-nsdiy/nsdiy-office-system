@@ -24,6 +24,7 @@ func ProvideRouter(
 	mediaHandler *handler.MediaHandler,
 	fileHandler *handler.FileHandler,
 	apiTokenHandler *handler.ApiTokenHandler,
+	setupHandler *handler.SetupHandler,
 ) *gin.Engine {
 	srv := NewServer(cfg)
 	srv.SetupRoutes(
@@ -39,6 +40,7 @@ func ProvideRouter(
 		mediaHandler,
 		fileHandler,
 		apiTokenHandler,
+		setupHandler,
 	)
 	return srv.Router
 }
