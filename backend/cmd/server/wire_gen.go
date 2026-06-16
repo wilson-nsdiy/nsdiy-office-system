@@ -22,7 +22,7 @@ import (
 // initializeApplication is the Wire injection function. It takes an
 // already-initialized ent client and config, and builds the full
 // dependency graph. The parameters themselves serve as Wire bindings.
-func initializeApplication(client *ent.Client, cfg *config.Config) (*Application, error) {
+func initializeApplication(client *ent.Client, cfg *config.Config, version string) (*Application, error) {
 	userRepository := repository.NewUserRepository(client)
 	authService := service.ProvideAuthService(userRepository, cfg)
 	handlerFunc := middleware.ProvideAuthMiddleware(cfg, authService)
@@ -60,7 +60,7 @@ func initializeApplication(client *ent.Client, cfg *config.Config) (*Application
 	apiTokenService := service.NewApiTokenService(apiTokenRepository, authService)
 	apiTokenHandler := handler.NewApiTokenHandler(apiTokenService)
 	setupHandler := handler.NewSetupHandler(authService)
-	engine := server.ProvideRouter(cfg, handlerFunc, adminRBACMiddleware, authHandler, roleHandler, permissionHandler, newsHandler, articleHandler, projectHandler, taskHandler, mediaHandler, fileHandler, apiTokenHandler, setupHandler)
+	engine := server.ProvideRouter(cfg, version, handlerFunc, adminRBACMiddleware, authHandler, roleHandler, permissionHandler, newsHandler, articleHandler, projectHandler, taskHandler, mediaHandler, fileHandler, apiTokenHandler, setupHandler)
 	v := provideCleanup(client)
 	application := &Application{
 		Router:  engine,

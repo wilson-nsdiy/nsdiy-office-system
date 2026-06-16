@@ -13,11 +13,12 @@ import (
 )
 
 type Server struct {
-	Router *gin.Engine
-	cfg    *config.Config
+	Router  *gin.Engine
+	cfg     *config.Config
+	version string
 }
 
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config, version string) *Server {
 	if cfg.Server.IsDebug() {
 		gin.SetMode(gin.DebugMode)
 	} else {
@@ -42,8 +43,9 @@ func NewServer(cfg *config.Config) *Server {
 	router.Use(web.ServeEmbeddedFrontend())
 
 	return &Server{
-		Router: router,
-		cfg:    cfg,
+		Router:  router,
+		cfg:     cfg,
+		version: version,
 	}
 }
 
@@ -65,6 +67,7 @@ func (s *Server) SetupRoutes(
 ) {
 	routes.SetupRoutes(
 		s.Router,
+		s.version,
 		authMiddleware,
 		gin.HandlerFunc(adminRBAC),
 		authHandler,
