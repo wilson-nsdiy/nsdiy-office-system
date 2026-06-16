@@ -16,6 +16,7 @@ import (
 
 // UserRepository defines the interface for user data access required by AuthService.
 type UserRepository interface {
+	Create(ctx context.Context, user *domain.User) error
 	GetByID(ctx context.Context, id int) (*domain.User, error)
 	GetByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
@@ -94,6 +95,30 @@ func (s *AuthService) GetUserByID(ctx context.Context, id int) (*UserDTO, error)
 		return nil, err
 	}
 	return userToDTO(u), nil
+}
+
+type CreateUserInput struct {
+	Username       string
+	Email          string
+	Nickname       *string
+	Salt           string
+	HashedPassword string
+	UserType       string
+	IsActive       bool
+}
+
+func (s *AuthService) CreateUser(ctx context.Context, input *CreateUserInput) error {
+	user := &domain.User{
+		Username:       input.Username,
+		Email:          input.Email,
+		Nickname:       input.Nickname,
+		Salt:           input.Salt,
+		HashedPassword: input.HashedPassword,
+		UserType:       input.UserType,
+		IsActive:       input.IsActive,
+		TokenVersion:   1,
+	}
+	return s.userRepo.Create(ctx, user)
 }
 
 type Claims struct {

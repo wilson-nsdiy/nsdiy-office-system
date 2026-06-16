@@ -12,43 +12,7 @@ import (
 	"oa-nsdiy/backend/internal/config"
 	"oa-nsdiy/backend/internal/db"
 	"oa-nsdiy/backend/internal/pkg/logger"
-	"oa-nsdiy/backend/internal/repository"
-	"oa-nsdiy/backend/internal/service"
 )
-
-func seedAdminUser() {
-	ctx := context.Background()
-	userRepo := repository.NewUserRepository(db.Client)
-	authService := service.NewAuthService(userRepo, "", 0, 0)
-
-	// Check if admin already exists
-	_, err := userRepo.GetByUsername(ctx, "admin")
-	if err == nil {
-		return
-	}
-
-	salt, _ := authService.GenerateSalt(ctx)
-	hashedPassword, _ := authService.HashPassword(ctx, "admin123", salt)
-
-	nickname := "Administrator"
-	admin := &repository.User{
-		Username:       "admin",
-		Email:          "admin@example.com",
-		Nickname:       &nickname,
-		Salt:           salt,
-		HashedPassword: hashedPassword,
-		UserType:       "HUMAN",
-		IsActive:       true,
-		TokenVersion:   1,
-	}
-
-	if err := userRepo.Create(ctx, admin); err != nil {
-		logger.S().Warnw("Failed to seed admin user", "error", err)
-		return
-	}
-
-	logger.S().Infow("Default admin user created", "username", "admin", "password", "admin123")
-}
 
 func main() {
 	cfg, err := config.Load()
@@ -85,8 +49,6 @@ func main() {
 	if err := db.Migrate(); err != nil {
 		logger.S().Fatalw("Failed to run migrations", "error", err)
 	}
-
-	seedAdminUser()
 
 	// Initialize application using Wire dependency injection
 	app, err := initializeApplication(db.Client, cfg)

@@ -59,7 +59,8 @@ func initializeApplication(client *ent.Client, cfg *config.Config) (*Application
 	apiTokenRepository := repository.NewApiTokenRepository(client)
 	apiTokenService := service.NewApiTokenService(apiTokenRepository, authService)
 	apiTokenHandler := handler.NewApiTokenHandler(apiTokenService)
-	engine := server.ProvideRouter(cfg, handlerFunc, adminRBACMiddleware, authHandler, roleHandler, permissionHandler, newsHandler, articleHandler, projectHandler, taskHandler, mediaHandler, fileHandler, apiTokenHandler)
+	setupHandler := handler.NewSetupHandler(authService)
+	engine := server.ProvideRouter(cfg, handlerFunc, adminRBACMiddleware, authHandler, roleHandler, permissionHandler, newsHandler, articleHandler, projectHandler, taskHandler, mediaHandler, fileHandler, apiTokenHandler, setupHandler)
 	v := provideCleanup(client)
 	application := &Application{
 		Router:  engine,

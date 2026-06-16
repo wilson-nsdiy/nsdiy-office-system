@@ -61,6 +61,7 @@ func (s *Server) SetupRoutes(
 	mediaHandler *handler.MediaHandler,
 	fileHandler *handler.FileHandler,
 	apiTokenHandler *handler.ApiTokenHandler,
+	setupHandler *handler.SetupHandler,
 ) {
 	routes.SetupRoutes(
 		s.Router,
@@ -76,6 +77,7 @@ func (s *Server) SetupRoutes(
 		mediaHandler,
 		fileHandler,
 		apiTokenHandler,
+		setupHandler,
 	)
 }
 
