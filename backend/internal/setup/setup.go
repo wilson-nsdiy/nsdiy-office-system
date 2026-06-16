@@ -9,11 +9,16 @@ import (
 
 const InstallLockFile = ".installed"
 
-// GetDataDir returns the directory where the SQLite database file is stored.
-// It checks the current working directory for the .db file.
+// GetDataDir returns the data directory path.
+// Priority: DATA_DIR env > /app/data (Docker default) > ./data
 func GetDataDir() string {
-	// Default to current directory
-	return "."
+	if dir := os.Getenv("DATA_DIR"); dir != "" {
+		return dir
+	}
+	if _, err := os.Stat("/app/data"); err == nil {
+		return "/app/data"
+	}
+	return "./data"
 }
 
 // GetInstallLockPath returns the full path to .installed lock file
@@ -28,8 +33,12 @@ func NeedsSetup() bool {
 	return os.IsNotExist(err)
 }
 
-// createInstallLock creates a lock file to prevent re-installation
+// CreateInstallLock creates a lock file to prevent re-installation
 func CreateInstallLock() error {
+	dir := GetDataDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create data directory: %w", err)
+	}
 	content := fmt.Sprintf("installed_at=%s\n", time.Now().UTC().Format(time.RFC3339))
 	return os.WriteFile(GetInstallLockPath(), []byte(content), 0400)
 }

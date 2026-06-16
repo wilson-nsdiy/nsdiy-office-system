@@ -103,9 +103,9 @@ func TestEnsureInstallLock_NoFile_HasUsers_RecreatesLock(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	lockPath := filepath.Join(dir, setup.InstallLockFile)
+	lockPath := filepath.Join(dir, "data", setup.InstallLockFile)
 	if _, err := os.Stat(lockPath); os.IsNotExist(err) {
-		t.Error("expected .installed lock file to be recreated")
+		t.Error("expected .installed lock file to be recreated in data/ directory")
 	}
 }
 
