@@ -18,6 +18,7 @@ type Config struct {
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Log      LogConfig      `mapstructure:"log"`
 	CORS     CORSConfig     `mapstructure:"cors"`
+	Upload   UploadConfig   `mapstructure:"upload"`
 }
 
 type ServerConfig struct {
@@ -74,6 +75,10 @@ type CORSConfig struct {
 	AllowMethods     []string `mapstructure:"allow_methods"`
 	AllowHeaders     []string `mapstructure:"allow_headers"`
 	AllowCredentials bool     `mapstructure:"allow_credentials"`
+}
+
+type UploadConfig struct {
+	Dir string `mapstructure:"dir"`
 }
 
 func (d *DatabaseConfig) DSN() string {
@@ -144,13 +149,18 @@ func Load() (*Config, error) {
 	}
 
 	// Auto-derive database source path from DATA_DIR if using default
-	if cfg.Database.Driver == "sqlite" && (cfg.Database.Source == "" || cfg.Database.Source == "./data/oa_nsdiy.db") {
-		cfg.Database.Source = filepath.Join(DataDir(), "oa_nsdiy.db")
+	if cfg.Database.Driver == "sqlite" && (cfg.Database.Source == "" || cfg.Database.Source == "./data/oa_nsdiy.db" || cfg.Database.Source == "./data/db/oa_nsdiy.db") {
+		cfg.Database.Source = filepath.Join(DataDir(), "db", "oa_nsdiy.db")
 	}
 
 	// Auto-derive log file path from DATA_DIR if using default
 	if cfg.Log.Output.ToFile && cfg.Log.Output.FilePath == "" {
 		cfg.Log.Output.FilePath = filepath.Join(DataDir(), "logs", "oa-nsdiy.log")
+	}
+
+	// Auto-derive upload dir from DATA_DIR if using default
+	if cfg.Upload.Dir == "" || cfg.Upload.Dir == "./data/uploads" {
+		cfg.Upload.Dir = filepath.Join(DataDir(), "uploads")
 	}
 
 	return &cfg, nil
@@ -164,7 +174,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.write_timeout", "30s")
 
 	v.SetDefault("database.driver", "sqlite")
-	v.SetDefault("database.source", "./data/oa_nsdiy.db")
+	v.SetDefault("database.source", "./data/db/oa_nsdiy.db")
 
 	v.SetDefault("redis.host", "localhost")
 	v.SetDefault("redis.port", 6379)
@@ -192,4 +202,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cors.allow_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	v.SetDefault("cors.allow_headers", []string{"Content-Type", "Authorization"})
 	v.SetDefault("cors.allow_credentials", true)
+
+	v.SetDefault("upload.dir", "./data/uploads")
 }

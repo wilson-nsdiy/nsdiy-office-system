@@ -386,7 +386,7 @@ SERVER_MODE=release              # release 或 debug
 
 # 数据库: sqlite(默认) 或 postgres
 DATABASE_DRIVER=sqlite
-DATABASE_SOURCE=                 # 留空则自动推导为 ./data/oa_nsdiy.db
+DATABASE_SOURCE=                 # 留空则自动推导为 ./data/db/oa_nsdiy.db
 # PostgreSQL 示例:
 # DATABASE_SOURCE=host=pg-host port=5432 user=pg-user password=pg-pass dbname=oa_nsdiy sslmode=require
 
