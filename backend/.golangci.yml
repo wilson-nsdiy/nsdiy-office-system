@@ -21,13 +21,13 @@ linters:
           deny:
             - pkg: oa-nsdiy/backend/internal/repository
               desc: "handler must not import repository"
-        service-no-repository:
+        handler-no-ent:
           list-mode: original
           files:
-            - "**/internal/service/**"
+            - "**/internal/handler/**"
           deny:
-            - pkg: oa-nsdiy/backend/internal/repository
-              desc: "service must not import repository"
+            - pkg: entgo.io/ent
+              desc: "handler must not import ent (use service interfaces)"
         handler-no-db:
           list-mode: original
           files:
@@ -35,6 +35,38 @@ linters:
           deny:
             - pkg: database/sql
               desc: "handler must not import database/sql"
+        service-no-repository:
+          list-mode: original
+          files:
+            - "**/internal/service/**"
+          deny:
+            - pkg: oa-nsdiy/backend/internal/repository
+              desc: "service must not import repository"
+        service-no-ent:
+          list-mode: original
+          files:
+            - "**/internal/service/**"
+          deny:
+            - pkg: entgo.io/ent
+              desc: "service must not import ent (use repository interfaces)"
+        service-no-db:
+          list-mode: original
+          files:
+            - "**/internal/service/**"
+          deny:
+            - pkg: database/sql
+              desc: "service must not import database/sql"
+        middleware-no-repository:
+          list-mode: original
+          files:
+            - "**/internal/middleware/**"
+          deny:
+            - pkg: oa-nsdiy/backend/internal/repository
+              desc: "middleware must not import repository"
+            - pkg: database/sql
+              desc: "middleware must not import database/sql"
+            - pkg: entgo.io/ent
+              desc: "middleware must not import ent"
     gosec:
       excludes:
         - G101
