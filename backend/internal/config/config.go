@@ -90,12 +90,11 @@ func (s *ServerConfig) IsDebug() bool {
 }
 
 // DataDir returns the data directory path.
-// Priority: DATA_DIR env > /app/data (Docker default) > ./data
+// Reads DATA_DIR from .env file; defaults to /app/data (Docker) or ./data.
 func DataDir() string {
 	if dir := os.Getenv("DATA_DIR"); dir != "" {
 		return dir
 	}
-	// Docker container: /app/data
 	if _, err := os.Stat("/app"); err == nil {
 		return "/app/data"
 	}
