@@ -107,6 +107,10 @@ func (r *RedisConfig) Addr() string {
 }
 
 func Load() (*Config, error) {
+	// Load .env file first if present (DATA_DIR etc.)
+	loadDotEnv()
+
+	// Load config.yaml
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 
@@ -204,4 +208,32 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cors.allow_credentials", true)
 
 	v.SetDefault("upload.dir", "./data/uploads")
+}
+
+// loadDotEnv loads .env file if present, setting env vars that are not already set.
+func loadDotEnv() {
+	paths := []string{".", "/app", "/etc/oa-nsdiy"}
+	for _, dir := range paths {
+		data, err := os.ReadFile(filepath.Join(dir, ".env"))
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			key, value, ok := strings.Cut(line, "=")
+			if !ok {
+				continue
+			}
+			key = strings.TrimSpace(key)
+			value = strings.TrimSpace(value)
+			value = strings.Trim(value, "\"'")
+			if os.Getenv(key) == "" {
+				os.Setenv(key, value)
+			}
+		}
+		return
+	}
 }
