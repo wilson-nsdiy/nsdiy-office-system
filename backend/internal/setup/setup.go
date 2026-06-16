@@ -5,20 +5,16 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"oa-nsdiy/backend/internal/config"
 )
 
 const InstallLockFile = ".installed"
 
 // GetDataDir returns the data directory path.
-// Priority: DATA_DIR env > /app/data (Docker default) > ./data
+// Uses the same logic as config.DataDir() for consistency.
 func GetDataDir() string {
-	if dir := os.Getenv("DATA_DIR"); dir != "" {
-		return dir
-	}
-	if _, err := os.Stat("/app/data"); err == nil {
-		return "/app/data"
-	}
-	return "./data"
+	return config.DataDir()
 }
 
 // GetInstallLockPath returns the full path to .installed lock file
