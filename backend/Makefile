@@ -2,14 +2,15 @@
 
 APP_NAME := server
 BUILD_DIR := bin
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION ?= $(shell tr -d '\r\n' < ./cmd/server/VERSION)
+LDFLAGS ?= -s -w -X main.Version=$(VERSION)
 MIGRATIONS_DIR := migrations
 
 build:
-	CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=$(VERSION)" -trimpath -o $(BUILD_DIR)/$(APP_NAME) ./cmd/server
+	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -trimpath -o $(BUILD_DIR)/$(APP_NAME) ./cmd/server
 
 build-embed:
-	CGO_ENABLED=0 go build -tags embed -ldflags="-s -w -X main.Version=$(VERSION)" -trimpath -o $(BUILD_DIR)/$(APP_NAME) ./cmd/server
+	CGO_ENABLED=0 go build -tags embed -ldflags="$(LDFLAGS)" -trimpath -o $(BUILD_DIR)/$(APP_NAME) ./cmd/server
 
 run:
 	go run ./cmd/server
