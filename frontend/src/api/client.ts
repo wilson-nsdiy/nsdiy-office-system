@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type { ApiResponse, ApiError } from '@/types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -75,7 +75,7 @@ async function performTokenRefresh(): Promise<void> {
 
   try {
     const response = await axios.post(
-      `${API_BASE_URL}/api/auth/refresh`,
+      `${API_BASE_URL}api/auth/refresh`,
       { refreshToken },
       { headers: { 'Content-Type': 'application/json' } }
     )
@@ -213,7 +213,7 @@ apiClient.interceptors.response.use(
 
           try {
             const refreshResponse = await axios.post(
-              `${API_BASE_URL}/api/auth/refresh`,
+              `${API_BASE_URL}api/auth/refresh`,
               { refreshToken },
               { headers: { 'Content-Type': 'application/json' } }
             )
