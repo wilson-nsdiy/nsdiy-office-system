@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	_ "embed"
+	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,6 +30,14 @@ func init() {
 }
 
 func main() {
+	showVersion := flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	if *showVersion {
+		log.Printf("oa-nsdiy %s\n", Version)
+		return
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		logger.S().Fatalw("Failed to load config", "error", err)
@@ -64,7 +74,7 @@ func main() {
 	}
 
 	// Initialize application using Wire dependency injection
-	app, err := initializeApplication(db.Client, cfg)
+	app, err := initializeApplication(db.Client, cfg, Version)
 	if err != nil {
 		logger.S().Fatalw("Failed to initialize application", "error", err)
 	}

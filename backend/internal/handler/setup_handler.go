@@ -24,6 +24,7 @@ func NewSetupHandler(authService *service.AuthService) *SetupHandler {
 
 // needsSetupDoubleCheck verifies installation state using both file lock and database.
 // This prevents bypass if the .installed file is deleted.
+// Note: This function has no side effects and is safe for read-only endpoints.
 func (h *SetupHandler) needsSetupDoubleCheck(ctx context.Context) (bool, error) {
 	if !setup.NeedsSetup() {
 		return false, nil
@@ -34,14 +35,26 @@ func (h *SetupHandler) needsSetupDoubleCheck(ctx context.Context) (bool, error) 
 		return false, err
 	}
 
-	if hasUser {
-		if err := setup.CreateInstallLock(); err != nil {
-			return false, err
-		}
-		return false, nil
+	return !hasUser, nil
+}
+
+// ensureInstallLock recreates the .installed file if users exist in DB but file is missing.
+// This is a self-healing mechanism called only during write operations.
+func (h *SetupHandler) ensureInstallLock(ctx context.Context) error {
+	if !setup.NeedsSetup() {
+		return nil
 	}
 
-	return true, nil
+	hasUser, err := h.authService.HasAnyUser(ctx)
+	if err != nil {
+		return err
+	}
+
+	if hasUser {
+		return setup.CreateInstallLock()
+	}
+
+	return nil
 }
 
 type SetupStatusResponse struct {

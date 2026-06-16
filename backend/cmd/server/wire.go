@@ -24,7 +24,7 @@ type Application struct {
 // initializeApplication is the Wire injection function. It takes an
 // already-initialized ent client and config, and builds the full
 // dependency graph. The parameters themselves serve as Wire bindings.
-func initializeApplication(client *ent.Client, cfg *config.Config) (*Application, error) {
+func initializeApplication(client *ent.Client, cfg *config.Config, version string) (*Application, error) {
 	wire.Build(
 		repository.ProviderSet,
 		service.ProviderSet,

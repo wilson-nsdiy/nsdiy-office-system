@@ -9,6 +9,7 @@ import (
 // Components are injected via Wire dependency injection.
 func SetupRoutes(
 	router *gin.Engine,
+	version string,
 	authMiddleware gin.HandlerFunc,
 	adminRBAC gin.HandlerFunc,
 	authHandler *handler.AuthHandler,
@@ -27,7 +28,7 @@ func SetupRoutes(
 
 	// Health check
 	api.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+		c.JSON(200, gin.H{"status": "ok", "version": version})
 	})
 
 	// Setup routes (no auth required)

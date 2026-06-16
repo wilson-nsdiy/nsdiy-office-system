@@ -12,6 +12,7 @@ import (
 // This is the entry point for the server layer in the Wire dependency graph.
 func ProvideRouter(
 	cfg *config.Config,
+	version string,
 	authMiddleware gin.HandlerFunc,
 	adminRBAC middleware.AdminRBACMiddleware,
 	authHandler *handler.AuthHandler,
@@ -26,7 +27,7 @@ func ProvideRouter(
 	apiTokenHandler *handler.ApiTokenHandler,
 	setupHandler *handler.SetupHandler,
 ) *gin.Engine {
-	srv := NewServer(cfg)
+	srv := NewServer(cfg, version)
 	srv.SetupRoutes(
 		authMiddleware,
 		adminRBAC,

@@ -76,8 +76,8 @@ func TestNeedsSetupDoubleCheck_NoFile_NoUsers(t *testing.T) {
 	}
 }
 
-func TestNeedsSetupDoubleCheck_NoFile_HasUsers_RecreatesLock(t *testing.T) {
-	dir := setupTestDir(t)
+func TestNeedsSetupDoubleCheck_NoFile_HasUsers(t *testing.T) {
+	setupTestDir(t)
 
 	h := newSetupHandler(&testutil.StubUserRepositoryWithData{
 		Users: map[int]*domain.User{1: testutil.NewTestUser()},
@@ -88,7 +88,19 @@ func TestNeedsSetupDoubleCheck_NoFile_HasUsers_RecreatesLock(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if needsSetup {
-		t.Error("expected needsSetup=false when users exist (lock should be recreated)")
+		t.Error("expected needsSetup=false when users exist in DB")
+	}
+}
+
+func TestEnsureInstallLock_NoFile_HasUsers_RecreatesLock(t *testing.T) {
+	dir := setupTestDir(t)
+
+	h := newSetupHandler(&testutil.StubUserRepositoryWithData{
+		Users: map[int]*domain.User{1: testutil.NewTestUser()},
+	})
+
+	if err := h.ensureInstallLock(t.Context()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	lockPath := filepath.Join(dir, setup.InstallLockFile)
