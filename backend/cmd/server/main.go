@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -13,6 +15,17 @@ import (
 	"oa-nsdiy/backend/internal/db"
 	"oa-nsdiy/backend/internal/pkg/logger"
 )
+
+//go:embed VERSION
+var embeddedVersion string
+
+var Version = "dev"
+
+func init() {
+	if v := strings.TrimSpace(embeddedVersion); v != "" {
+		Version = v
+	}
+}
 
 func main() {
 	cfg, err := config.Load()
