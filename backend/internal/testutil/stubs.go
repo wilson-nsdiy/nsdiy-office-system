@@ -42,6 +42,10 @@ func (s *StubUserRepository) ClearVerificationCode(ctx context.Context, id int) 
 	return fmt.Errorf("not implemented")
 }
 
+func (s *StubUserRepository) Count(ctx context.Context) (int, error) {
+	return 0, nil
+}
+
 // StubUserRepositoryWithData provides configurable user data for testing.
 type StubUserRepositoryWithData struct {
 	Users         map[int]*domain.User
@@ -130,6 +134,13 @@ func (s *StubUserRepositoryWithData) ClearVerificationCode(ctx context.Context, 
 		return nil
 	}
 	return fmt.Errorf("not found")
+}
+
+func (s *StubUserRepositoryWithData) Count(ctx context.Context) (int, error) {
+	if s.Err != nil {
+		return 0, s.Err
+	}
+	return len(s.Users), nil
 }
 
 // =============================================================================

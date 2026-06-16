@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -21,6 +22,28 @@ func NewSetupHandler(authService *service.AuthService) *SetupHandler {
 	return &SetupHandler{authService: authService}
 }
 
+// needsSetupDoubleCheck verifies installation state using both file lock and database.
+// This prevents bypass if the .installed file is deleted.
+func (h *SetupHandler) needsSetupDoubleCheck(ctx context.Context) (bool, error) {
+	if !setup.NeedsSetup() {
+		return false, nil
+	}
+
+	hasUser, err := h.authService.HasAnyUser(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if hasUser {
+		if err := setup.CreateInstallLock(); err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+
+	return true, nil
+}
+
 type SetupStatusResponse struct {
 	NeedsSetup bool `json:"needsSetup"`
 }
@@ -34,8 +57,13 @@ type CreateAdminRequest struct {
 
 // Status checks if the system needs initial setup
 func (h *SetupHandler) Status(c *gin.Context) {
+	needsSetup, err := h.needsSetupDoubleCheck(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
 	response.Success(c, SetupStatusResponse{
-		NeedsSetup: setup.NeedsSetup(),
+		NeedsSetup: needsSetup,
 	})
 }
 
@@ -44,8 +72,13 @@ func (h *SetupHandler) CreateAdmin(c *gin.Context) {
 	installMutex.Lock()
 	defer installMutex.Unlock()
 
-	// Double-check: prevent re-installation
-	if !setup.NeedsSetup() {
+	// Double-check: prevent re-installation using both file and database
+	needsSetup, err := h.needsSetupDoubleCheck(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if !needsSetup {
 		response.ErrorWithDetails(c, http.StatusForbidden, "System is already installed", "already_installed", nil)
 		return
 	}
@@ -96,10 +129,17 @@ func (h *SetupHandler) CreateAdmin(c *gin.Context) {
 	})
 }
 
-// SetupGuard is a middleware that blocks setup endpoints if already installed
-func SetupGuard() gin.HandlerFunc {
+// SetupGuard returns a middleware that blocks setup endpoints if already installed.
+// Uses double-check verification with both file lock and database.
+func (h *SetupHandler) SetupGuard() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !setup.NeedsSetup() {
+		needsSetup, err := h.needsSetupDoubleCheck(c.Request.Context())
+		if err != nil {
+			response.ErrorFrom(c, err)
+			c.Abort()
+			return
+		}
+		if !needsSetup {
 			response.ErrorWithDetails(c, http.StatusForbidden, "Setup is not allowed: system is already installed", "already_installed", nil)
 			c.Abort()
 			return
@@ -116,7 +156,7 @@ func (h *SetupHandler) SetupRoutes(api *gin.RouterGroup) {
 
 		// Modification endpoints are protected by guard
 		protected := setup.Group("")
-		protected.Use(SetupGuard())
+		protected.Use(h.SetupGuard())
 		{
 			protected.POST("/admin", h.CreateAdmin)
 		}
