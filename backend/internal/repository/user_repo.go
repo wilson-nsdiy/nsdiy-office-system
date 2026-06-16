@@ -180,3 +180,7 @@ func (r *UserRepository) List(ctx context.Context, page, pageSize int) ([]*User,
 
 	return toUsers(es), int64(total), nil
 }
+
+func (r *UserRepository) Count(ctx context.Context) (int, error) {
+	return r.client.User.Query().Count(ctx)
+}

@@ -23,6 +23,7 @@ type UserRepository interface {
 	UpdatePassword(ctx context.Context, id int, salt, hashedPassword string) error
 	SetVerificationCode(ctx context.Context, id int, code string, expiresAt time.Time) error
 	ClearVerificationCode(ctx context.Context, id int) error
+	Count(ctx context.Context) (int, error)
 }
 
 type AuthService struct {
@@ -229,6 +230,14 @@ func (s *AuthService) ValidatePasswordStrength(ctx context.Context, password str
 func (s *AuthService) HashToken(ctx context.Context, token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
+}
+
+func (s *AuthService) HasAnyUser(ctx context.Context) (bool, error) {
+	count, err := s.userRepo.Count(ctx)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (s *AuthService) GenerateApiToken(ctx context.Context) (string, string, string) {
