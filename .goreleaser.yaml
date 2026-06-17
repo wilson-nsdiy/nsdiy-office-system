@@ -1,0 +1,70 @@
+version: 2
+
+project_name: oa-nsdiy
+
+before:
+  hooks:
+    - go mod tidy -C backend
+
+builds:
+  - id: oa-nsdiy
+    dir: backend
+    main: ./cmd/server
+    binary: oa-nsdiy
+    flags:
+      - -tags=embed
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: "{{ .Env.GITHUB_REPO_OWNER }}"
+    name: "{{ .Env.GITHUB_REPO_NAME }}"
+  draft: false
+  prerelease: auto
+  name_template: "OA-NSDIY {{.Version}}"
+  header: |
+    > OA-NSDIY - Studio OA Management System
+
+    {{ .Env.TAG_MESSAGE }}
+
+  footer: |
+
+    ---
+
+    **One-line install (Linux):**
+    ```bash
+    curl -sSL https://raw.githubusercontent.com/{{ .Env.GITHUB_REPO_OWNER }}/{{ .Env.GITHUB_REPO_NAME }}/main/deploy/install.sh | sudo bash
+    ```
+
+    **Manual download:**
+    Download the appropriate archive for your platform from the assets below.
