@@ -40,10 +40,17 @@ oa-nsdiy/
 │       ├── app/             # App Router 页面
 │       ├── contexts/        # React Context
 │       └── types/           # TypeScript 类型
-├── deploy/                  # Docker 部署配置
+├── deploy/                  # 部署配置
 │   ├── Dockerfile           # 多阶段构建
 │   ├── docker-compose.yml   # 容器编排
-│   └── .env.example         # 环境变量配置模板
+│   ├── .env.example         # 环境变量配置模板
+│   ├── build.sh             # 一键编译脚本 (生产模式)
+│   ├── install.sh           # 脚本安装 (裸机/systemd)
+│   ├── docker-deploy.sh     # Docker 部署准备脚本
+│   ├── commands.sh          # Linux/macOS 构建脚本
+│   └── commands.ps1         # Windows 构建脚本
+├── docs/                    # 项目文档
+│   └── production-deploy.md # 生产部署指南
 └── .workflow/               # CI/CD 流水线
 ```
 
@@ -123,14 +130,35 @@ npm run build            # 构建 (静态导出到 out/)
 npx tsc --noEmit         # 类型检查
 
 # 生产构建 (前端嵌入后端)
-cd frontend && npm install && npm run build
-cp -r out/ ../backend/internal/web/dist
-cd ../backend
-CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
+cd deploy && ./build.sh
 
 # Docker
 make docker-up           # 启动服务
 make docker-down         # 停止服务
+```
+
+## 版本管理
+
+版本号存储在 `backend/cmd/server/VERSION` 文件中，通过 `-ldflags` 注入到二进制。
+
+```bash
+# 查看当前版本
+cat backend/cmd/server/VERSION
+
+# 更新版本 (修改 VERSION 文件)
+echo "0.1.3" > backend/cmd/server/VERSION
+
+# 版本格式: MAJOR.MINOR.PATCH
+# - MAJOR: 不兼容的 API 变更
+# - MINOR: 向下兼容的功能新增
+# - PATCH: 向下兼容的问题修复
+```
+
+构建时版本自动注入：
+```bash
+# Makefile 中: VERSION ?= $(shell tr -d '\r\n' < ./cmd/server/VERSION)
+# LDFLAGS: -X main.Version=$(VERSION)
+make build
 ```
 
 ## 构建模式
