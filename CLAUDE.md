@@ -137,6 +137,30 @@ make docker-up           # 启动服务
 make docker-down         # 停止服务
 ```
 
+## 版本管理
+
+版本号存储在 `backend/cmd/server/VERSION` 文件中，通过 `-ldflags` 注入到二进制。
+
+```bash
+# 查看当前版本
+cat backend/cmd/server/VERSION
+
+# 更新版本 (修改 VERSION 文件)
+echo "0.1.3" > backend/cmd/server/VERSION
+
+# 版本格式: MAJOR.MINOR.PATCH
+# - MAJOR: 不兼容的 API 变更
+# - MINOR: 向下兼容的功能新增
+# - PATCH: 向下兼容的问题修复
+```
+
+构建时版本自动注入：
+```bash
+# Makefile 中: VERSION ?= $(shell tr -d '\r\n' < ./cmd/server/VERSION)
+# LDFLAGS: -X main.Version=$(VERSION)
+make build
+```
+
 ## 构建模式
 
 ### 开发模式 (默认)
