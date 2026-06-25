@@ -16,6 +16,8 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      GOPROXY: https://goproxy.cn,direct
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
