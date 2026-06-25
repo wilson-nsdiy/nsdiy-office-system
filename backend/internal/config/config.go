@@ -230,7 +230,7 @@ func loadDotEnv() {
 			value = strings.TrimSpace(value)
 			value = strings.Trim(value, "\"'")
 			if os.Getenv(key) == "" {
-				os.Setenv(key, value)
+				_ = os.Setenv(key, value)
 			}
 		}
 		return

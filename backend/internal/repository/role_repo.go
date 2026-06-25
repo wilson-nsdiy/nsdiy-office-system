@@ -124,7 +124,7 @@ func (r *RoleRepository) UpdatePermissions(ctx context.Context, roleID int, perm
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Clear existing permissions
 	_, err = tx.RolePerm.Delete().Where(roleperm.RoleIDEQ(roleID)).Exec(ctx)
