@@ -1,6 +1,6 @@
 version: '1.0'
-name: master-pipeline
-displayName: MasterPipeline
+name: ci-pipeline
+displayName: CIPipeline
 triggers:
   trigger: manual
   push:
@@ -8,6 +8,39 @@ triggers:
       include:
         - master
 stages:
+  - name: lint
+    displayName: 代码检查
+    strategy: naturally
+    trigger: auto
+    steps:
+      - step: build@nodejs
+        name: lint_typescript
+        displayName: TypeScript Lint & TypeCheck
+        nodeVersion: 22.22.0
+        commands:
+          - npm config set registry https://registry.npmmirror.com
+          - cd frontend
+          - npm install
+          - npm run lint
+          - npm run typecheck
+        caches:
+          - ~/.npm
+        notify: []
+        strategy:
+          retry: '0'
+      - step: build@golang
+        name: lint_golang
+        displayName: Go Lint
+        golangVersion: '1.24'
+        commands:
+          - export GOPROXY=https://goproxy.cn
+          - cd backend
+          - make lint
+        caches:
+          - /go/pkg/mod
+        notify: []
+        strategy:
+          retry: '0'
   - name: build
     displayName: 构建前端
     strategy: naturally

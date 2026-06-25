@@ -331,6 +331,6 @@ make migrate-new
 
 项目使用 Gitee Go 流水线：
 
-- **master-pipeline**: master 分支推送触发，编译 + 构建镜像 + 发布
+- **ci-pipeline**: master 分支推送触发，代码检查 + 编译 + 构建镜像 + 发布
 - **branch-pipeline**: 非 master 分支推送触发，编译检查
 - **pr-pipeline**: PR 到 master 触发，编译检查
