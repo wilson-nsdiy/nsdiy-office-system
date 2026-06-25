@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   backend:
+    needs: frontend
     runs-on: ubuntu-latest
     env:
       GOPROXY: https://goproxy.cn,direct
@@ -42,6 +43,14 @@ jobs:
           args: --timeout=30m
           working-directory: backend
           verify: false
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: backend/internal/web/dist
+      - name: Build backend
+        working-directory: backend
+        run: CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -61,3 +70,11 @@ jobs:
       - name: Frontend typecheck
         working-directory: frontend
         run: npm run typecheck
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/out
