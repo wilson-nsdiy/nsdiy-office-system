@@ -16,7 +16,7 @@ stages:
       - step: build@general
         name: build_go_backend
         displayName: Go 后端编译检查
-        image: golang:1.22-alpine
+        image: golang:1.25-alpine
         commands:
           - export GOPROXY=https://goproxy.cn,direct
           - cd backend
