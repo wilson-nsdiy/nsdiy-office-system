@@ -29,6 +29,7 @@ export default function MediaAccountsPage() {
     if (isAuthenticated) {
       loadAccounts()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, page])
 
   const loadAccounts = async () => {

@@ -27,6 +27,7 @@ export default function ProjectsPage() {
     if (isAuthenticated) {
       loadProjects()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, page])
 
   const loadProjects = async () => {

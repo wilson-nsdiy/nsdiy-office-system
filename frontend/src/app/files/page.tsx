@@ -28,6 +28,7 @@ export default function FilesPage() {
     if (isAuthenticated) {
       loadFiles()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, page])
 
   const loadFiles = async () => {

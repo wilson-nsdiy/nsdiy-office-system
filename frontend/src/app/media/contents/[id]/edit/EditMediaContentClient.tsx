@@ -39,6 +39,7 @@ export default function EditMediaContentClient() {
     if (isAuthenticated && params.id) {
       loadData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, params.id])
 
   const loadData = async () => {

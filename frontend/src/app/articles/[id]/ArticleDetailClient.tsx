@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useAuth } from '@/contexts/auth'
 import { articlesApi } from '@/api'
 import { ArticleDetail } from '@/types'
@@ -24,6 +25,7 @@ export default function ArticleDetailClient() {
     if (isAuthenticated && params.id) {
       loadArticle()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, params.id])
 
   const loadArticle = async () => {
@@ -118,7 +120,7 @@ export default function ArticleDetailClient() {
 
           {article.coverUrl && (
             <div className="mb-6">
-              <img src={article.coverUrl} alt={article.title} className="w-full h-64 object-cover rounded-lg" />
+              <Image src={article.coverUrl} alt={article.title} width={800} height={256} className="w-full h-64 object-cover rounded-lg" />
             </div>
           )}
 

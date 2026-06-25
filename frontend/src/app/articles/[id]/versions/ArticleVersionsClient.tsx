@@ -28,6 +28,7 @@ export default function ArticleVersionsClient() {
     if (isAuthenticated && params.id) {
       loadVersions()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, params.id, page])
 
   const loadVersions = async () => {

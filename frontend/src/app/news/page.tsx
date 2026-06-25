@@ -30,6 +30,7 @@ export default function NewsPage() {
       loadGroups()
       loadNews()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, page, groupId])
 
   const loadGroups = async () => {

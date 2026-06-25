@@ -21,6 +21,7 @@ export default function EditNewsClient() {
 
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   const loadData = async () => {
