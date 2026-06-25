@@ -40,7 +40,6 @@ jobs:
         with:
           version: v2.9
           args: --timeout=30m
-          skip-config-verify: true
           working-directory: backend
 
   frontend:
