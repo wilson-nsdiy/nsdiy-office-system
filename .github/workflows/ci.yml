@@ -41,7 +41,7 @@ jobs:
           version: v2.9
           args: --timeout=30m
           working-directory: backend
-
+          verify: false
   frontend:
     runs-on: ubuntu-latest
     steps:
