@@ -21,7 +21,12 @@ import (
 //go:embed VERSION
 var embeddedVersion string
 
-var Version = "dev"
+var (
+	Version  = "dev"
+	Commit   = ""
+	Date     = ""
+	BuildType = ""
+)
 
 func init() {
 	if v := strings.TrimSpace(embeddedVersion); v != "" {
@@ -34,7 +39,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		log.Printf("oa-nsdiy %s\n", Version)
+		log.Printf("oa-nsdiy %s (commit: %s, built: %s, type: %s)\n", Version, Commit, Date, BuildType)
 		return
 	}
 
