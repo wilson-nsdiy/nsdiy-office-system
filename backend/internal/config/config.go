@@ -90,13 +90,10 @@ func (s *ServerConfig) IsDebug() bool {
 }
 
 // DataDir returns the data directory path.
-// Reads DATA_DIR from .env file; defaults to /app/data (Docker) or ./data.
+// Reads DATA_DIR from .env file; defaults to ./data.
 func DataDir() string {
 	if dir := os.Getenv("DATA_DIR"); dir != "" {
 		return dir
-	}
-	if _, err := os.Stat("/app"); err == nil {
-		return "/app/data"
 	}
 	return "./data"
 }
@@ -120,7 +117,6 @@ func Load() (*Config, error) {
 		// Auto search paths if no explicit path
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("./config")
-		viper.AddConfigPath("/app")
 		viper.AddConfigPath("/etc/oa-nsdiy")
 	}
 
@@ -211,7 +207,7 @@ func setDefaults(v *viper.Viper) {
 
 // loadDotEnv loads .env file if present, setting env vars that are not already set.
 func loadDotEnv() {
-	paths := []string{".", "/app", "/etc/oa-nsdiy"}
+	paths := []string{".", "/etc/oa-nsdiy"}
 	for _, dir := range paths {
 		data, err := os.ReadFile(filepath.Join(dir, ".env"))
 		if err != nil {
