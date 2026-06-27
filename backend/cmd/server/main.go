@@ -22,9 +22,9 @@ import (
 var embeddedVersion string
 
 var (
-	Version  = "dev"
-	Commit   = ""
-	Date     = ""
+	Version   = "dev"
+	Commit    = ""
+	Date      = ""
 	BuildType = ""
 )
 

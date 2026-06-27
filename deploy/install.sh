@@ -2,7 +2,7 @@
 #
 # OA-NSDIY 安装脚本
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/wilson-nsdiy/nsdiy-office-system/main/deploy/install.sh | sudo bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/wilson-nsdiy/nsdiy-office-system/master/deploy/install.sh | sudo bash
 #
 
 set -e
