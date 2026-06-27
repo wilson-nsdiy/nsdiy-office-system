@@ -35,6 +35,7 @@ export default function PermissionsPage() {
     if (isAuthenticated) {
       loadPermissions()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, filter])
 
   const loadPermissions = async () => {

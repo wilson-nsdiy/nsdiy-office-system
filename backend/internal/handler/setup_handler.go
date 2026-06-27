@@ -38,25 +38,6 @@ func (h *SetupHandler) needsSetupDoubleCheck(ctx context.Context) (bool, error) 
 	return !hasUser, nil
 }
 
-// ensureInstallLock recreates the .installed file if users exist in DB but file is missing.
-// This is a self-healing mechanism called only during write operations.
-func (h *SetupHandler) ensureInstallLock(ctx context.Context) error {
-	if !setup.NeedsSetup() {
-		return nil
-	}
-
-	hasUser, err := h.authService.HasAnyUser(ctx)
-	if err != nil {
-		return err
-	}
-
-	if hasUser {
-		return setup.CreateInstallLock()
-	}
-
-	return nil
-}
-
 type SetupStatusResponse struct {
 	NeedsSetup bool `json:"needsSetup"`
 }

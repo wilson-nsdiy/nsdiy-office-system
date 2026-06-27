@@ -45,6 +45,7 @@ export default function EditProjectClient() {
     if (isAuthenticated && params.projectNo) {
       loadProject()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, params.projectNo])
 
   const loadProject = async () => {

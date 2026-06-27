@@ -6,6 +6,11 @@
 
 OA-NSDIY 是工作室 OA 管理系统，采用 Go (Gin + Ent) 后端 + Next.js 14 前端的分离架构。
 
+| 仓库 | 地址 |
+|------|------|
+| Gitee | https://gitee.com/zhouws-chn/oa-nsdiy |
+| GitHub | https://github.com/wilson-nsdiy/nsdiy-office-system |
+
 ## 技术栈
 
 - **后端**: Go 1.25+, Gin, Ent ORM v0.14.5, Google Wire (DI), Viper (配置), JWT 双 Token 认证
@@ -14,7 +19,7 @@ OA-NSDIY 是工作室 OA 管理系统，采用 Go (Gin + Ent) 后端 + Next.js 1
 - **日志**: Zap + Lumberjack (结构化 + 轮转)
 - **测试**: in-memory SQLite + Ent Client (Repository 层), unit/integration build tags
 - **包管理**: npm (前端), Go Modules (后端)
-- **CI/CD**: Gitee Go 流水线
+- **CI/CD**: GitHub Actions (GoReleaser 自动发布)
 
 ## 项目结构
 
@@ -33,7 +38,8 @@ oa-nsdiy/
 │       ├── pkg/             # 工具 (errors, response)
 │       ├── repository/      # 数据访问层 (Ent Client 封装)
 │       ├── server/routes/   # 路由注册
-│       └── service/         # 业务逻辑
+│       ├── service/         # 业务逻辑
+│       └── web/             # 前端静态文件嵌入 (embed 构建标签)
 ├── frontend/                # Next.js 前端
 │   └── src/
 │       ├── api/             # API 客户端
@@ -41,17 +47,14 @@ oa-nsdiy/
 │       ├── contexts/        # React Context
 │       └── types/           # TypeScript 类型
 ├── deploy/                  # 部署配置
-│   ├── Dockerfile           # 多阶段构建
-│   ├── docker-compose.yml   # 容器编排
 │   ├── .env.example         # 环境变量配置模板
-│   ├── build.sh             # 一键编译脚本 (生产模式)
-│   ├── install.sh           # 脚本安装 (裸机/systemd)
-│   ├── docker-deploy.sh     # Docker 部署准备脚本
-│   ├── commands.sh          # Linux/macOS 构建脚本
-│   └── commands.ps1         # Windows 构建脚本
+│   ├── build.sh             # 生产构建脚本 (Linux/macOS)
+│   ├── build.bat            # 生产构建脚本 (Windows)
+│   ├── install.sh           # 安装脚本 (Linux)
+│   └── install.bat          # 安装脚本 (Windows)
 ├── docs/                    # 项目文档
 │   └── production-deploy.md # 生产部署指南
-└── .workflow/               # CI/CD 流水线
+└── .github/workflows/      # CI/CD 流水线
 ```
 
 ## 开发规范
@@ -63,9 +66,9 @@ oa-nsdiy/
 - Repository 封装 Ent 查询，Service 不直接操作 Ent client
 - Repository 返回 Ent 原始错误 (不做 sql.ErrNoRows 转换)，Service 用 `HandleRepoErr()` 统一处理
 - 依赖注入通过 Google Wire 管理，在 `cmd/server` 和 `internal/config/wire.go` 中配置
-- API 响应统一格式: 成功 `{ data: T }`, 失败 `{ error: string, code: string }`
+- API 响应统一格式: 成功 `{ code: 0, message: "success", data: T }`, 失败 `{ code: <int>, message: string, reason: string }`
 - 使用 `internal/pkg/response` 统一响应，`internal/pkg/errors` 统一错误码
-- 数据模型变更: 修改 `ent/schema/` 后执行 `make generate`
+- 数据模型变更: 修改 `ent/schema/` 后执行 `go generate ./ent && go generate ./cmd/server`
 - 密码存储使用 bcrypt + salt
 - JWT 双 Token 机制: Access Token (30m) + Refresh Token (168h)
 - Lint 规则强制分层: handler 禁止 import repository/ent/db, service 禁止 import repository/ent/db, middleware 禁止 import repository/ent/db
@@ -85,7 +88,7 @@ oa-nsdiy/
 - Service 层测试: 使用 `testutil` 包中的 stub (如 `StubUserRepositoryWithData`)，不需要数据库
 - Repository 层测试: 使用 `setupTestDB(t)` 创建 in-memory SQLite + Ent Client
 - Handler 层测试: 使用 `testutil.NewTestContext()` 或 `testutil.NewTestContextWithJSON()` 创建测试上下文
-- 运行命令: `make test-unit` (仅 unit 标签) / `make test-race` (含竞态检测)
+- 运行命令: `go test -tags=unit ./...` (仅 unit 标签) / `go test -race -tags=unit ./...` (含竞态检测)
 
 ### Service 错误处理
 
@@ -104,7 +107,7 @@ oa-nsdiy/
 
 ### 通用
 
-- **⚠️ 必须提供 `.env` 配置文件**：程序本身不包含默认配置，开发和生产环境都需要
+- **⚠️ 建议提供 `.env` 配置文件**：程序所有字段都有内置默认值，可不提供任何配置直接启动（开发环境）。但生产环境必须修改 JWT 密钥等安全配置
 - 数据库文件不提交到 Git
 - 前端使用 npm，不用 pnpm 或 yarn
 - `package-lock.json` 需要提交到仓库
@@ -115,12 +118,12 @@ oa-nsdiy/
 # 后端
 cd backend
 go mod download          # 安装依赖
-make generate            # 生成 Ent 代码
-make dev                 # 开发模式运行
-make build               # 构建 (开发模式，不含前端)
-make test                # 运行测试
-make lint                # golangci-lint 检查
-make migrate-new         # 创建新的迁移文件
+go generate ./ent && go generate ./cmd/server  # 生成 Ent 和 Wire 代码
+go run ./cmd/server      # 开发模式运行
+go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o bin/server ./cmd/server  # 构建
+go test ./...            # 运行测试
+golangci-lint run ./...  # 代码检查
+touch migrations/$(date +%Y%m%d%H%M%S)_name.sql  # 创建新的迁移文件
 
 # 前端
 cd frontend
@@ -131,10 +134,6 @@ npx tsc --noEmit         # 类型检查
 
 # 生产构建 (前端嵌入后端)
 cd deploy && ./build.sh
-
-# Docker
-make docker-up           # 启动服务
-make docker-down         # 停止服务
 ```
 
 ## 版本管理
@@ -158,14 +157,14 @@ echo "0.1.3" > backend/cmd/server/VERSION
 ```bash
 # Makefile 中: VERSION ?= $(shell tr -d '\r\n' < ./cmd/server/VERSION)
 # LDFLAGS: -X main.Version=$(VERSION)
-make build
+go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o bin/server ./cmd/server
 ```
 
 ## 构建模式
 
 ### 开发模式 (默认)
 - 前后端独立运行
-- `make build` 构建不含前端的后端二进制
+- `go build` 构建不含前端的后端二进制
 - Next.js 开发服务器代理 API 请求
 
 ### 生产模式 (`-tags embed`)
@@ -176,11 +175,11 @@ make build
 
 ## 配置
 
-**⚠️ 必须提供 `.env` 配置文件**：程序本身不包含默认配置。
+**⚠️ 建议提供 `.env` 配置文件**：程序所有字段都有内置默认值，开发环境可直接启动。生产环境应修改 JWT 密钥等安全配置。
 
 | 场景 | 配置文件位置 | 生效方式 |
 |------|-------------|----------|
-| Docker 部署 | `deploy/.env` | docker-compose env_file 注入 |
+| 生产部署 | `deploy/.env` | 从 `.env.example` 复制并填写 |
 | 开发环境 | `.env`（项目根目录）| viper.AutomaticEnv 读取 |
 
 后端配置文件 `.env` (从 `.env.example` 复制)，主要配置:
@@ -193,7 +192,7 @@ make build
 
 前端环境变量（仅开发模式需要）:
 
-- `NEXT_PUBLIC_API_URL`: 前端 API 地址 (开发时默认 http://localhost:3001，生产同源部署无需配置)
+- `NEXT_PUBLIC_API_URL`: 前端 API 地址 (代码中默认 `'/'`，开发模式通过 next.config.js 的 rewrites 代理到 localhost:3001，生产同源部署无需配置)
 
 ## 经验教训
 
@@ -217,7 +216,7 @@ make build
 
 ### Ent ORM 使用
 
-- Schema 定义在 `ent/schema/`，通过 `go generate ./ent` 生成 Client 代码
+- Schema 定义在 `ent/schema/`，通过 `go generate ./ent && go generate ./cmd/server` 生成 Client 和 Wire 代码
 - 生成的代码应提交到 Git (确定性输出)
 - Task 的自引用关系在 Ent 中用纯字段 (parent_id) 而非自引用 Edge
 - Repository 层的实体类型保持指针风格 (*string, *int)，通过转换器桥接 Ent 生成的值类型
@@ -230,7 +229,7 @@ make build
 ### 前端通用模式
 
 - 表格加载逻辑抽取为 `useTableLoader` hook，统一处理 loading/error/pagination
-- 分页大小用 `usePersistedPageSize` 持久化到 localStorage
+- 分页大小用 `getPersistedPageSize` / `setPersistedPageSize` 持久化到 localStorage
 - 导航状态用 `useNavigationLoading` hook 管理
 - 部署更新后 chunk 加载失败，用 `ChunkErrorRecovery` 组件自动 reload
 

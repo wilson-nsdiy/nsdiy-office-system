@@ -25,6 +25,7 @@ export default function CreateNewsPage() {
     if (isEdit) {
       loadNews()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   const loadGroups = async () => {

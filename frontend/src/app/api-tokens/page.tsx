@@ -33,6 +33,7 @@ export default function ApiTokensPage() {
     if (isAuthenticated) {
       loadTokens()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, page])
 
   const loadTokens = async () => {

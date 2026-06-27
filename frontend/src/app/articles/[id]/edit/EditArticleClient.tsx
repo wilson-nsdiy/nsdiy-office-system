@@ -43,6 +43,7 @@ export default function EditArticleClient() {
     if (isAuthenticated && params.id) {
       loadArticle()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, params.id])
 
   const loadArticle = async () => {

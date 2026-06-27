@@ -18,25 +18,28 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     goarch:
       - amd64
-      - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
+    ignore: []
     ldflags:
       - -s -w
       - -X main.Version={{.Version}}
+      - -X main.Commit={{.Commit}}
+      - -X main.Date={{.Date}}
+      - -X main.BuildType=release
 
 archives:
   - id: default
     format: tar.gz
     name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      {{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - LICENSE*
+      - README*
+      - deploy/.env.example
 
 checksum:
   name_template: 'checksums.txt'
@@ -51,7 +54,7 @@ release:
     name: "{{ .Env.GITHUB_REPO_NAME }}"
   draft: false
   prerelease: auto
-  name_template: "OA-NSDIY {{.Version}}"
+  name_template: "OA-NSDIY v{{.Version}}"
   header: |
     > OA-NSDIY - Studio OA Management System
 
@@ -60,6 +63,8 @@ release:
   footer: |
 
     ---
+
+    ## Installation
 
     **One-line install (Linux):**
     ```bash

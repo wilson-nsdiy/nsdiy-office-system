@@ -2,6 +2,11 @@
 
 生产模式使用 Go `embed` 将前端静态文件嵌入后端二进制，构建单一可执行文件，同时服务 API 和前端。
 
+| 仓库 | 地址 |
+|------|------|
+| Gitee | https://gitee.com/zhouws-chn/oa-nsdiy |
+| GitHub | https://github.com/wilson-nsdiy/nsdiy-office-system |
+
 ## 部署方式
 
 ### 方式一：从 Release 页面下载

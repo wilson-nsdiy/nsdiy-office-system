@@ -42,6 +42,7 @@ export default function SetupPage() {
 
   useEffect(() => {
     checkSetupStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const checkSetupStatus = async () => {

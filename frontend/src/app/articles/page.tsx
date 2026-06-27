@@ -28,6 +28,7 @@ export default function ArticlesPage() {
     if (isAuthenticated) {
       loadArticles()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, page, status])
 
   const loadArticles = async () => {

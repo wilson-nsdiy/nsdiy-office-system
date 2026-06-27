@@ -31,12 +31,12 @@ func setupTestDB(t *testing.T) *ent.Client {
 
 	// Run auto-migration
 	if err := client.Schema.Create(context.Background()); err != nil {
-		client.Close()
+		_ = client.Close()
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
 
 	t.Cleanup(func() {
-		client.Close()
+		_ = client.Close()
 	})
 
 	return client
