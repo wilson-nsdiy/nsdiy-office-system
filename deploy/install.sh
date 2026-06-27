@@ -5,7 +5,7 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/wilson-nsdiy/nsdiy-office-system/master/deploy/install.sh | sudo bash
 #
 
-set -e
+# Note: set -e omitted intentionally — explicit exit-on-error handling below
 
 # Colors
 RED='\033[0;31m'
@@ -17,18 +17,44 @@ NC='\033[0m'
 # Configuration
 GITHUB_OWNER="wilson-nsdiy"
 GITHUB_REPO="nsdiy-office-system"
-INSTALL_DIR="/opt/oa-nsdiy"
 SERVICE_NAME="oa-nsdiy"
-SERVICE_USER="oa-nsdiy"
-CONFIG_DIR="/etc/oa-nsdiy"
 
 SERVER_HOST="0.0.0.0"
 SERVER_PORT="3001"
+
+# Defaults (overridden by --user mode below)
+USER_MODE="false"
+INSTALL_DIR="/opt/oa-nsdiy"
+DATA_DIR="/opt/oa-nsdiy/data"
+CONFIG_DIR="/etc/oa-nsdiy"
+SERVICE_USER="oa-nsdiy"
+SYSTEMCTL="systemctl"
+SYSTEMD_DIR="/etc/systemd/system"
 
 print_info()    { echo -e "${BLUE}[信息]${NC} $1"; }
 print_success() { echo -e "${GREEN}[成功]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[警告]${NC} $1"; }
 print_error()   { echo -e "${RED}[错误]${NC} $1"; }
+
+setup_user_mode() {
+    USER_MODE="true"
+    INSTALL_DIR="$HOME/.local/bin"
+    DATA_DIR="$HOME/.local/share/oa-nsdiy"
+    CONFIG_DIR="$HOME/.config/oa-nsdiy"
+    SERVICE_USER=$(id -un)
+    SYSTEMCTL="systemctl --user"
+    SYSTEMD_DIR="$HOME/.config/systemd/user"
+}
+
+setup_system_mode() {
+    USER_MODE="false"
+    INSTALL_DIR="/opt/oa-nsdiy"
+    DATA_DIR="/opt/oa-nsdiy/data"
+    CONFIG_DIR="/etc/oa-nsdiy"
+    SERVICE_USER="oa-nsdiy"
+    SYSTEMCTL="systemctl"
+    SYSTEMD_DIR="/etc/systemd/system"
+}
 
 is_interactive() {
     [ -e /dev/tty ] && [ -r /dev/tty ] && [ -w /dev/tty ]
@@ -38,8 +64,11 @@ is_interactive() {
 # Root / platform / dependency checks
 # ============================================================
 check_root() {
+    if [ "$USER_MODE" = "true" ]; then
+        return 0
+    fi
     if [ "$(id -u)" -ne 0 ]; then
-        print_error "请使用 root 权限运行 (使用 sudo)"
+        print_error "请使用 root 权限运行 (使用 sudo)，或使用 --user 模式"
         exit 1
     fi
 }
@@ -66,11 +95,11 @@ check_dependencies() {
     local missing=()
     command -v curl &>/dev/null || missing+=("curl")
     command -v tar   &>/dev/null || missing+=("tar")
-    [ ${#missing[@]} -gt 0 ] && {
+    if [ ${#missing[@]} -gt 0 ]; then
         print_error "缺少依赖: ${missing[*]}"
         print_info "请先安装以上依赖"
         exit 1
-    }
+    fi
 }
 
 # ============================================================
@@ -80,13 +109,19 @@ API_BASE="https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}"
 
 get_latest_version() {
     print_info "正在获取最新版本..."
-    RELEASE_JSON=$(curl -s --connect-timeout 10 --max-time 30 "${API_BASE}/releases/latest" 2>/dev/null)
+    local curl_err
+    curl_err=$(mktemp)
+    RELEASE_JSON=$(curl -s --connect-timeout 10 --max-time 30 "${API_BASE}/releases/latest" 2>"$curl_err" || true)
 
     if [ -z "$RELEASE_JSON" ]; then
-        print_error "获取最新版本失败"
+        local err_msg
+        err_msg=$(cat "$curl_err")
+        rm -f "$curl_err"
+        [ -n "$err_msg" ] && print_error "获取最新版本失败: $err_msg" || print_error "获取最新版本失败 (空响应)"
         print_info "请到 Release 页面手动下载: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases"
         exit 1
     fi
+    rm -f "$curl_err"
 
     LATEST_VERSION=$(echo "$RELEASE_JSON" | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
 
@@ -102,7 +137,7 @@ get_latest_version() {
 list_versions() {
     print_info "正在获取可用版本..."
     local versions
-    versions=$(curl -s --connect-timeout 10 --max-time 30 "${API_BASE}/releases" 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | sed -E 's/.*"([^"]+)"$/\1/' | head -20)
+    versions=$(curl -s --connect-timeout 10 --max-time 30 "${API_BASE}/releases" | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | sed -E 's/.*"([^"]+)"$/\1/' | head -20 || true)
 
     if [ -z "$versions" ]; then
         print_error "获取版本列表失败"
@@ -125,7 +160,7 @@ validate_version() {
     print_info "正在验证版本 $version"
 
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 "${API_BASE}/releases/tags/${version}" 2>/dev/null)
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 "${API_BASE}/releases/tags/${version}" || true)
     [ -z "$http_code" ] || ! [[ "$http_code" =~ ^[0-9]+$ ]] && {
         print_error "网络错误: 无法连接 GitHub API"; exit 1
     }
@@ -140,7 +175,7 @@ validate_version() {
 
 fetch_release_by_version() {
     local version="$1"
-    RELEASE_JSON=$(curl -s --connect-timeout 10 --max-time 30 "${API_BASE}/releases/tags/${version}" 2>/dev/null)
+    RELEASE_JSON=$(curl -s --connect-timeout 10 --max-time 30 "${API_BASE}/releases/tags/${version}" || true)
 }
 
 get_asset_url() {
@@ -157,7 +192,7 @@ try:
             print(a.get('browser_download_url', '')); break
 except Exception:
     pass
-" 2>/dev/null)
+" 2>&1)
 
     if [ -n "$url" ]; then
         echo "$url"
@@ -190,11 +225,10 @@ get_current_version() {
 # Download & extract
 # ============================================================
 download_and_extract() {
-    local version_num=${LATEST_VERSION#v}
-    local archive_name="oa-nsdiy_${version_num}_${OS}_${ARCH}.tar.gz"
+    local archive_name="oa-nsdiy_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz"
     local checksum_asset="checksums.txt"
 
-    print_info "正在下载 ${archive_name}..."
+    print_info "正在下载 ${archive_name}... (可能需要几分钟)"
 
     TEMP_DIR=$(mktemp -d)
     trap "rm -rf $TEMP_DIR" EXIT
@@ -205,16 +239,26 @@ download_and_extract() {
         download_url="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/${archive_name}"
     fi
 
-    if ! curl -fsSL "$download_url" -o "$TEMP_DIR/$archive_name"; then
-        print_error "下载失败"
+    print_info "下载地址: $download_url"
+    local curl_err
+    curl_err=$(mktemp)
+    http_code=$(curl -sSL --connect-timeout 30 --max-time 600 -w "%{http_code}" -o "$TEMP_DIR/$archive_name" "$download_url" 2>"$curl_err" || true)
+    if [ "$http_code" != "200" ]; then
+        rm -f "$TEMP_DIR/$archive_name"
+        local err_msg
+        err_msg=$(cat "$curl_err" 2>/dev/null)
+        rm -f "$curl_err"
+        [ -n "$err_msg" ] && print_error "下载失败: $err_msg" || print_error "下载失败 (HTTP ${http_code})"
+        print_error "下载地址: ${download_url}"
         print_info "请到 Release 页面手动下载: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases"
         exit 1
     fi
+    rm -f "$curl_err"
 
     print_info "正在校验文件..."
     local checksum_url
     checksum_url=$(get_asset_url "$checksum_asset")
-    if [ -n "$checksum_url" ] && curl -fsSL "$checksum_url" -o "$TEMP_DIR/checksums.txt" 2>/dev/null; then
+    if [ -n "$checksum_url" ] && curl -fsSL "$checksum_url" -o "$TEMP_DIR/checksums.txt" 2>&1; then
         local expected_checksum actual_checksum
         expected_checksum=$(grep "$archive_name" "$TEMP_DIR/checksums.txt" | awk '{print $1}')
         actual_checksum=$(sha256sum "$TEMP_DIR/$archive_name" | awk '{print $1}')
@@ -269,16 +313,19 @@ create_user() {
 
 setup_directories() {
     print_info "正在设置目录..."
-    mkdir -p "$INSTALL_DIR" "$INSTALL_DIR/data" "$CONFIG_DIR"
-    chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR" "$CONFIG_DIR"
+    mkdir -p "$INSTALL_DIR" "$DATA_DIR" "$CONFIG_DIR"
+    if [ "$USER_MODE" = "false" ]; then
+        chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR" "$CONFIG_DIR"
+    fi
     print_success "目录配置完成"
 }
 
 generate_env() {
-    local env_file="$INSTALL_DIR/.env"
+    local env_file="$CONFIG_DIR/.env"
     [ -f "$env_file" ] && { print_info ".env 已存在，保留现有配置"; return; }
 
     print_info "正在生成 .env 配置..."
+    mkdir -p "$CONFIG_DIR"
     local jwt_secret
     jwt_secret=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
@@ -306,7 +353,9 @@ LOG_OUTPUT_TO_FILE=true
 EOF
 
     chmod 600 "$env_file"
-    chown "$SERVICE_USER:$SERVICE_USER" "$env_file"
+    if [ "$USER_MODE" = "false" ]; then
+        chown "$SERVICE_USER:$SERVICE_USER" "$env_file"
+    fi
     print_success ".env 已生成（含随机 JWT_SECRET）"
 }
 
@@ -316,7 +365,9 @@ EOF
 install_service() {
     print_info "正在安装 systemd 服务..."
 
-    cat > /etc/systemd/system/${SERVICE_NAME}.service << EOF
+    mkdir -p "$SYSTEMD_DIR"
+
+    cat > "${SYSTEMD_DIR}/${SERVICE_NAME}.service" << EOF
 [Unit]
 Description=OA-NSDIY - Studio OA Management System
 Documentation=https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}
@@ -324,9 +375,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=${SERVICE_USER}
-Group=${SERVICE_USER}
-WorkingDirectory=${INSTALL_DIR}
+WorkingDirectory=${DATA_DIR}
 ExecStart=${INSTALL_DIR}/${SERVICE_NAME}
 Restart=always
 RestartSec=5
@@ -335,7 +384,22 @@ StandardError=journal
 SyslogIdentifier=${SERVICE_NAME}
 
 # Read configuration from .env
-EnvironmentFile=${INSTALL_DIR}/.env
+EnvironmentFile=${CONFIG_DIR}/.env
+EOF
+
+    if [ "$USER_MODE" = "true" ]; then
+        cat >> "${SYSTEMD_DIR}/${SERVICE_NAME}.service" << EOF
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+EOF
+        loginctl enable-linger "$SERVICE_USER" 2>/dev/null || true
+        print_info "已启用 lingering (允许服务在未登录时运行)"
+    else
+        cat >> "${SYSTEMD_DIR}/${SERVICE_NAME}.service" << EOF
+User=${SERVICE_USER}
+Group=${SERVICE_USER}
 
 # Security hardening
 NoNewPrivileges=true
@@ -343,12 +407,16 @@ ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
 ReadWritePaths=${INSTALL_DIR}
+EOF
+    fi
+
+    cat >> "${SYSTEMD_DIR}/${SERVICE_NAME}.service" << EOF
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 EOF
 
-    systemctl daemon-reload
+    $SYSTEMCTL daemon-reload
     print_success "systemd 服务已安装"
 }
 
@@ -357,18 +425,22 @@ EOF
 # ============================================================
 start_service() {
     print_info "正在启动服务..."
-    if systemctl start "$SERVICE_NAME"; then
+    if $SYSTEMCTL start "$SERVICE_NAME"; then
         print_success "服务已启动"
     else
         print_error "服务启动失败，请检查日志"
-        print_info "sudo journalctl -u ${SERVICE_NAME} -n 50"
+        if [ "$USER_MODE" = "true" ]; then
+            print_info "$SYSTEMCTL status ${SERVICE_NAME}"
+        else
+            print_info "sudo journalctl -u ${SERVICE_NAME} -n 50"
+        fi
         return 1
     fi
 }
 
 enable_autostart() {
     print_info "正在设置开机自启..."
-    systemctl enable "$SERVICE_NAME" 2>/dev/null && print_success "开机自启已启用" || print_warning "设置开机自启失败"
+    $SYSTEMCTL enable "$SERVICE_NAME" 2>/dev/null && print_success "开机自启已启用" || print_warning "设置开机自启失败"
 }
 
 # ============================================================
@@ -378,35 +450,46 @@ print_completion() {
     echo ""
     echo "=============================================="
     print_success "OA-NSDIY 安装完成！"
+    if [ "$USER_MODE" = "true" ]; then
+        echo "  (用户模式)"
+    fi
     echo "=============================================="
     echo ""
     echo "安装目录: $INSTALL_DIR"
-    echo "服务地址: ${SERVER_HOST}:${SERVER_PORT}"
+    echo "数据目录: $DATA_DIR"
+    echo "配置文件: $CONFIG_DIR/.env"
+    echo "服务地址: http://127.0.0.1:${SERVER_PORT}"
     echo ""
     echo "=============================================="
     echo "  后续步骤"
     echo "=============================================="
     echo ""
     echo "  1. 编辑配置文件（修改 JWT_SECRET 等必填项）:"
-    echo "     sudo nano ${INSTALL_DIR}/.env"
+    echo "     nano ${CONFIG_DIR}/.env"
     echo ""
     echo "  2. 启动服务:"
-    echo "     sudo systemctl restart ${SERVICE_NAME}"
+    echo "     $SYSTEMCTL restart ${SERVICE_NAME}"
     echo ""
     echo "  3. 设置开机自启:"
-    echo "     sudo systemctl enable ${SERVICE_NAME}"
+    echo "     $SYSTEMCTL enable ${SERVICE_NAME}"
     echo ""
     echo "  4. 访问 Web:"
-    echo "     http://YOUR_SERVER_IP:${SERVER_PORT}"
+    echo "     http://127.0.0.1:${SERVER_PORT}"
     echo ""
     echo "=============================================="
     echo "  常用命令"
     echo "=============================================="
     echo ""
-    echo "  查看状态: sudo systemctl status ${SERVICE_NAME}"
-    echo "  查看日志: sudo journalctl -u ${SERVICE_NAME} -f"
-    echo "  重启服务: sudo systemctl restart ${SERVICE_NAME}"
-    echo "  停止服务: sudo systemctl stop ${SERVICE_NAME}"
+    echo "  查看状态: $SYSTEMCTL status ${SERVICE_NAME}"
+    if [ "$USER_MODE" = "true" ]; then
+        echo "  查看日志: journalctl --user -u ${SERVICE_NAME} -f"
+        echo "  重启服务: $SYSTEMCTL restart ${SERVICE_NAME}"
+        echo "  停止服务: $SYSTEMCTL stop ${SERVICE_NAME}"
+    else
+        echo "  查看日志: sudo journalctl -u ${SERVICE_NAME} -f"
+        echo "  重启服务: sudo systemctl restart ${SERVICE_NAME}"
+        echo "  停止服务: sudo systemctl stop ${SERVICE_NAME}"
+    fi
     echo ""
 }
 
@@ -426,9 +509,9 @@ upgrade() {
     current_version=$(get_current_version)
     print_info "当前版本: $current_version"
 
-    systemctl is-active --quiet "$SERVICE_NAME" && {
+    $SYSTEMCTL is-active --quiet "$SERVICE_NAME" && {
         print_info "正在停止服务..."
-        systemctl stop "$SERVICE_NAME"
+        $SYSTEMCTL stop "$SERVICE_NAME"
     }
 
     cp "$INSTALL_DIR/oa-nsdiy" "$INSTALL_DIR/oa-nsdiy.backup"
@@ -436,10 +519,12 @@ upgrade() {
 
     get_latest_version
     download_and_extract
-    chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/oa-nsdiy"
+    if [ "$USER_MODE" = "false" ]; then
+        chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/oa-nsdiy"
+    fi
 
     print_info "正在启动服务..."
-    systemctl start "$SERVICE_NAME"
+    $SYSTEMCTL start "$SERVICE_NAME"
     print_success "升级完成！"
 }
 
@@ -464,9 +549,9 @@ install_version() {
         exit 0
     fi
 
-    systemctl is-active --quiet "$SERVICE_NAME" && {
+    $SYSTEMCTL is-active --quiet "$SERVICE_NAME" && {
         print_info "正在停止服务..."
-        systemctl stop "$SERVICE_NAME"
+        $SYSTEMCTL stop "$SERVICE_NAME"
     }
 
     local backup_name
@@ -481,12 +566,18 @@ install_version() {
     LATEST_VERSION="$target_version"
     fetch_release_by_version "$target_version"
     download_and_extract
-    chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/oa-nsdiy"
+    if [ "$USER_MODE" = "false" ]; then
+        chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/oa-nsdiy"
+    fi
 
     print_info "正在启动服务..."
-    systemctl start "$SERVICE_NAME" && print_success "服务已启动" || {
+    $SYSTEMCTL start "$SERVICE_NAME" && print_success "服务已启动" || {
         print_error "服务启动失败，请检查日志"
-        print_info "sudo journalctl -u ${SERVICE_NAME} -n 50"
+        if [ "$USER_MODE" = "true" ]; then
+            print_info "$SYSTEMCTL status ${SERVICE_NAME}"
+        else
+            print_info "sudo journalctl -u ${SERVICE_NAME} -n 50"
+        fi
     }
 
     local new_version
@@ -515,12 +606,12 @@ uninstall() {
     fi
 
     print_info "正在停止服务..."
-    systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-    systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+    $SYSTEMCTL stop "$SERVICE_NAME" 2>/dev/null || true
+    $SYSTEMCTL disable "$SERVICE_NAME" 2>/dev/null || true
 
     print_info "正在移除文件..."
-    rm -f /etc/systemd/system/${SERVICE_NAME}.service
-    systemctl daemon-reload
+    rm -f "${SYSTEMD_DIR}/${SERVICE_NAME}.service"
+    $SYSTEMCTL daemon-reload
 
     local remove_data=false
     if [ "${PURGE:-}" = "true" ]; then
@@ -533,15 +624,18 @@ uninstall() {
 
     if [ "$remove_data" = true ]; then
         print_info "正在移除数据目录..."
-        rm -rf "$INSTALL_DIR"
+        rm -rf "$DATA_DIR" "$CONFIG_DIR"
     else
-        rm -f "$INSTALL_DIR/oa-nsdiy" "$INSTALL_DIR/.version" "$INSTALL_DIR/oa-nsdiy.backup"*
-        print_warning "数据目录未被移除: $INSTALL_DIR/data"
-        print_warning "如不再需要，请手动删除: rm -rf $INSTALL_DIR"
+        print_warning "数据目录未被移除: $DATA_DIR"
+        print_warning "配置目录未被移除: $CONFIG_DIR"
     fi
 
-    print_info "正在移除用户..."
-    userdel "$SERVICE_USER" 2>/dev/null || true
+    rm -f "$INSTALL_DIR/oa-nsdiy" "$INSTALL_DIR/.version" "$INSTALL_DIR/oa-nsdiy.backup"*
+
+    if [ "$USER_MODE" = "false" ]; then
+        print_info "正在移除用户..."
+        userdel "$SERVICE_USER" 2>/dev/null || true
+    fi
 
     print_success "OA-NSDIY 已卸载"
 }
@@ -557,6 +651,7 @@ main() {
         case "$1" in
             -y|--yes) FORCE_YES="true"; shift ;;
             --purge)  PURGE="true"; shift ;;
+            --user)   USER_MODE="true"; shift ;;
             -v|--version)
                 if [ -n "${2:-}" ] && [[ ! "$2" =~ ^- ]]; then
                     target_version="$2"; shift 2
@@ -573,6 +668,12 @@ main() {
         esac
     done
     set -- "${positional_args[@]}"
+
+    if [ "$USER_MODE" = "true" ]; then
+        setup_user_mode
+    else
+        setup_system_mode
+    fi
 
     echo ""
     echo "=============================================="
@@ -627,15 +728,21 @@ main() {
             echo "  uninstall            卸载 OA-NSDIY"
             echo ""
             echo "选项:"
+            echo "  --user               用户模式安装 (无需 root, 安装到 ~/.local/bin)"
             echo "  -v, --version <版本>  指定要安装的版本号 (例如: v1.0.0)"
             echo "  -y, --yes            跳过确认提示 (用于卸载)"
             echo ""
             echo "示例:"
-            echo "  $0                        # 安装最新版本"
-            echo "  $0 install -v v1.0.0      # 安装指定版本"
+            echo "  $0                        # 以 root 安装最新版本"
+            echo "  $0 --user                 # 以当前用户安装 (无需 sudo)"
+            echo "  $0 install --user -v v1.0.0  # 用户模式安装指定版本"
             echo "  $0 upgrade                # 升级到最新"
             echo "  $0 rollback v1.0.0        # 回退到 v1.0.0"
             echo "  $0 list-versions          # 列出可用版本"
+            echo ""
+            echo "安装位置:"
+            echo "  系统模式 (默认):  /opt/oa-nsdiy/"
+            echo "  用户模式 (--user): ~/.local/bin/"
             echo ""
             exit 0 ;;
     esac
