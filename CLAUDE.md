@@ -120,7 +120,7 @@ cd backend
 go mod download          # 安装依赖
 go generate ./ent && go generate ./cmd/server  # 生成 Ent 和 Wire 代码
 go run ./cmd/server      # 开发模式运行
-go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o bin/server ./cmd/server  # 构建
+go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o bin/oa-nsdiy ./cmd/server  # 构建
 go test ./...            # 运行测试
 golangci-lint run ./...  # 代码检查
 touch migrations/$(date +%Y%m%d%H%M%S)_name.sql  # 创建新的迁移文件
@@ -157,7 +157,7 @@ echo "0.1.3" > backend/cmd/server/VERSION
 ```bash
 # Makefile 中: VERSION ?= $(shell tr -d '\r\n' < ./cmd/server/VERSION)
 # LDFLAGS: -X main.Version=$(VERSION)
-go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o bin/server ./cmd/server
+go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o bin/oa-nsdiy ./cmd/server
 ```
 
 ## 构建模式
@@ -193,6 +193,13 @@ go build -ldflags="-s -w -X main.Version=$(cat cmd/server/VERSION)" -trimpath -o
 前端环境变量（仅开发模式需要）:
 
 - `NEXT_PUBLIC_API_URL`: 前端 API 地址 (代码中默认 `'/'`，开发模式通过 next.config.js 的 rewrites 代理到 localhost:3001，生产同源部署无需配置)
+
+## 生产部署
+
+生产环境推荐使用安装脚本，支持两种模式：
+
+- **root 模式 (生产推荐)**: `curl -sSL .../install.sh | sudo bash` — 安装到 `/opt/oa-nsdiy`，系统级 systemd 服务
+- **--user 模式**: `curl -sSL .../install.sh | bash -s -- --user` — 安装到 `~/.local/bin`，无需 sudo
 
 ## 经验教训
 

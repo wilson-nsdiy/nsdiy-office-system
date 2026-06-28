@@ -50,7 +50,7 @@ jobs:
           path: backend/internal/web/dist
       - name: Build backend
         working-directory: backend
-        run: CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/server ./cmd/server
+        run: CGO_ENABLED=0 go build -tags embed -ldflags="-s -w" -o bin/oa-nsdiy ./cmd/server
   frontend:
     runs-on: ubuntu-latest
     steps:

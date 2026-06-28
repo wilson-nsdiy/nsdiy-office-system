@@ -32,16 +32,16 @@ VERSION=$(git -C "$PROJECT_ROOT" describe --tags --always --dirty 2>/dev/null ||
 case "$TARGET_OS" in
     linux)
         GOOS=linux GOARCH=amd64
-        OUTPUT_NAME="server-linux-amd64"
+        OUTPUT_NAME="oa-nsdiy-linux-amd64"
         ;;
     darwin|macos)
         GOOS=darwin GOARCH=arm64
-        OUTPUT_NAME="server-darwin-arm64"
+        OUTPUT_NAME="oa-nsdiy-darwin-arm64"
         ;;
     "")
         GOOS=$(go env GOOS)
         GOARCH=$(go env GOARCH)
-        OUTPUT_NAME="server"
+        OUTPUT_NAME="oa-nsdiy"
         ;;
     *)
         print_error "不支持的目标平台: $TARGET_OS (仅支持 linux/darwin)"
@@ -93,6 +93,6 @@ echo "  版本: $VERSION"
 echo ""
 echo "部署步骤:"
 echo "  1. 上传 $OUTPUT_NAME 到目标服务器"
-echo "  2. 配置环境变量: cp deploy/.env.example deploy/.env"
-echo "  3. 启动服务: ./$OUTPUT_NAME"
+echo "  2. Linux: 使用安装脚本 curl -sSL https://raw.githubusercontent.com/wilson-nsdiy/nsdiy-office-system/master/deploy/install.sh | sudo bash"
+echo "  3. 或手动部署: cp deploy/.env.example deploy/.env && ./$OUTPUT_NAME"
 echo ""
