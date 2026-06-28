@@ -17,11 +17,14 @@ set "GITHUB_OWNER=wilson-nsdiy"
 set "GITHUB_REPO=nsdiy-office-system"
 set "API_BASE=https://api.github.com/repos/%GITHUB_OWNER%/%GITHUB_REPO%"
 set "INSTALL_DIR=C:\oa-nsdiy"
+set "DATA_DIR=C:\oa-nsdiy\data"
+set "CONFIG_DIR=C:\oa-nsdiy\config"
 set "SERVICE_NAME=oa-nsdiy"
 
 REM Parse arguments
 set "TARGET_VERSION="
 set "FORCE_YES="
+set "PURGE="
 set "COMMAND="
 set "NEXT_ARG="
 
@@ -51,6 +54,7 @@ if "%~1"=="--version" (
 )
 if "%~1"=="-y" set "FORCE_YES=true"
 if "%~1"=="--yes" set "FORCE_YES=true"
+if "%~1"=="--purge" set "PURGE=true"
 if not defined COMMAND set "COMMAND=%~1"
 shift
 goto :parse_args
@@ -82,6 +86,7 @@ echo.
 
 if "%COMMAND%"=="upgrade" goto :do_upgrade
 if "%COMMAND%"=="update" goto :do_upgrade
+if "%COMMAND%"=="rollback" goto :do_rollback
 if "%COMMAND%"=="uninstall" goto :do_uninstall
 if "%COMMAND%"=="remove" goto :do_uninstall
 if "%COMMAND%"=="list-versions" goto :do_list_versions
@@ -137,8 +142,7 @@ REM ============================================================
 REM Download and extract
 REM ============================================================
 :download_and_extract
-set "VERSION_NUM=%LATEST_VERSION:v=%"
-set "ARCHIVE_NAME=oa-nsdiy_%VERSION_NUM%_%OS%_%ARCH%.zip"
+set "ARCHIVE_NAME=oa-nsdiy_%LATEST_VERSION%_%OS%_%ARCH%.zip"
 set "TEMP_DIR=%TEMP%\oa-nsdiy-install-%RANDOM%"
 mkdir "%TEMP_DIR%"
 
@@ -153,6 +157,30 @@ if errorlevel 1 (
     echo [INFO] 请到 Release 页面手动下载: https://github.com/%GITHUB_OWNER%/%GITHUB_REPO%/releases
     rmdir /s /q "%TEMP_DIR%" 2>nul
     exit /b 1
+)
+
+REM Verify checksum
+echo [INFO] 正在校验文件...
+set "CHECKSUM_URL=https://github.com/%GITHUB_OWNER%/%GITHUB_REPO%/releases/download/%LATEST_VERSION%/checksums.txt"
+curl -fsSL "%CHECKSUM_URL%" -o "%TEMP_DIR%\checksums.txt" 2>nul
+if not errorlevel 1 (
+    set "EXPECTEDChecksum="
+    for /f "tokens=1" %%c in ('findstr /i "%ARCHIVE_NAME%" "%TEMP_DIR%\checksums.txt"') do set "EXPECTED_CHECKSUM=%%c"
+    if defined EXPECTED_CHECKSUM (
+        for /f "tokens=*" %%h in ('powershell -NoProfile -Command "(Get-FileHash -Path '%TEMP_DIR%\%ARCHIVE_NAME%' -Algorithm SHA256).Hash.ToLower()"') do set "ACTUAL_CHECKSUM=%%h"
+        if /i not "%EXPECTED_CHECKSUM%"=="%ACTUAL_CHECKSUM%" (
+            echo [ERROR] 校验失败
+            echo [ERROR] Expected: %EXPECTED_CHECKSUM%
+            echo [ERROR] Actual:   %ACTUAL_CHECKSUM%
+            rmdir /s /q "%TEMP_DIR%" 2>nul
+            exit /b 1
+        )
+        echo [成功] 校验通过
+    ) else (
+        echo [WARN] 无法验证校验和（checksums.txt 未找到该文件）
+    )
+) else (
+    echo [WARN] 无法验证校验和（checksums.txt 未找到）
 )
 
 echo [INFO] 正在解压...
@@ -193,13 +221,14 @@ REM ============================================================
 REM Generate .env
 REM ============================================================
 :generate_env
-set "ENV_FILE=%INSTALL_DIR%\.env"
+set "ENV_FILE=%CONFIG_DIR%\.env"
 if exist "%ENV_FILE%" (
     echo [INFO] .env 已存在，保留现有配置
     exit /b 0
 )
 
 echo [INFO] 正在生成 .env 配置...
+mkdir "%CONFIG_DIR%" 2>nul
 
 REM Generate random JWT secret using PowerShell
 for /f "delims=" %%s in ('powershell -NoProfile -Command "[System.BitConverter]::ToString((1..32 ^| ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]]).Replace('-','').ToLower()"') do set "JWT_SECRET=%%s"
@@ -249,7 +278,8 @@ if defined TARGET_VERSION (
 call :download_and_extract
 if errorlevel 1 exit /b 1
 
-mkdir "%INSTALL_DIR%\data" 2>nul
+mkdir "%DATA_DIR%" 2>nul
+mkdir "%CONFIG_DIR%" 2>nul
 
 call :generate_env
 if errorlevel 1 exit /b 1
@@ -290,6 +320,9 @@ if not "%CURRENT_VERSION%"=="unknown" (
 call :fetch_release_by_version
 call :download_and_extract
 if errorlevel 1 exit /b 1
+
+mkdir "%DATA_DIR%" 2>nul
+mkdir "%CONFIG_DIR%" 2>nul
 
 call :start_service
 
@@ -333,16 +366,38 @@ echo [成功] 升级完成！
 exit /b 0
 
 REM ============================================================
+REM Rollback
+REM ============================================================
+:do_rollback
+if not defined TARGET_VERSION (
+    if not "%~2"=="" (
+        set "TARGET_VERSION=%~2"
+    )
+)
+if not defined TARGET_VERSION (
+    echo [ERROR] 指定要安装的版本号 (例如: v1.0.0)
+    echo.
+    echo 用法: %~nx0 rollback -v ^<version^>
+    echo.
+    call :do_list_versions
+    exit /b 1
+)
+call :install_version
+exit /b 0
+
+REM ============================================================
 REM Uninstall
 REM ============================================================
 :do_uninstall
 echo [WARN] 这将从系统中移除 OA-NSDIY。
 
 if not "%FORCE_YES%"=="true" (
-    set /p CONFIRM="确定要继续吗？(y/N) "
-    if /i not "!CONFIRM!"=="y" (
-        echo [INFO] 卸载已取消
-        exit /b 0
+    if not "%PURGE%"=="true" (
+        set /p CONFIRM="确定要继续吗？(y/N) "
+        if /i not "!CONFIRM!"=="y" (
+            echo [INFO] 卸载已取消
+            exit /b 0
+        )
     )
 )
 
@@ -353,8 +408,15 @@ if exist "%INSTALL_DIR%\oa-nsdiy.exe" del /q "%INSTALL_DIR%\oa-nsdiy.exe"
 if exist "%INSTALL_DIR%\.version" del /q "%INSTALL_DIR%\.version"
 if exist "%INSTALL_DIR%\oa-nsdiy.backup*.exe" del /q "%INSTALL_DIR%\oa-nsdiy.backup*.exe"
 
-echo [WARN] 数据目录未被移除: %INSTALL_DIR%\data
-echo [WARN] 如不再需要，请手动删除: rmdir /s /q "%INSTALL_DIR%"
+if "%PURGE%"=="true" (
+    echo [INFO] 正在移除数据目录...
+    if exist "%DATA_DIR%" rmdir /s /q "%DATA_DIR%"
+    if exist "%CONFIG_DIR%" rmdir /s /q "%CONFIG_DIR%"
+) else (
+    echo [WARN] 数据目录未被移除: %DATA_DIR%
+    echo [WARN] 配置目录未被移除: %CONFIG_DIR%
+    echo [WARN] 如不再需要，请手动删除: rmdir /s /q "%INSTALL_DIR%"
+)
 
 echo [成功] OA-NSDIY 已卸载
 exit /b 0
@@ -415,14 +477,16 @@ echo   OA-NSDIY 安装完成！
 echo ==========================================
 echo.
 echo   安装目录: %INSTALL_DIR%
-echo   服务地址: 0.0.0.0:3001
+echo   数据目录: %DATA_DIR%
+echo   配置文件: %CONFIG_DIR%\.env
+echo   服务地址: http://127.0.0.1:3001
 echo.
 echo ==========================================
 echo   后续步骤
 echo ==========================================
 echo.
 echo   1. 编辑配置文件（修改 JWT_SECRET 等必填项）:
-echo      notepad %INSTALL_DIR%\.env
+echo      notepad %CONFIG_DIR%\.env
 echo.
 echo   2. 启动服务:
 echo      cd %INSTALL_DIR% ^&^& oa-nsdiy.exe
@@ -431,7 +495,7 @@ echo   3. 如需注册为 Windows 服务，使用 nssm:
 echo      nssm install %SERVICE_NAME% "%INSTALL_DIR%\oa-nsdiy.exe"
 echo.
 echo   4. 访问 Web:
-echo      http://YOUR_SERVER_IP:3001
+echo      http://127.0.0.1:3001
 echo.
 echo ==========================================
 echo   常用命令
@@ -453,18 +517,22 @@ echo 命令:
 echo   (无参数)             安装最新版本
 echo   install              安装 OA-NSDIY
 echo   upgrade              升级到最新版本
+echo   rollback ^<版本^>      安装/回退到指定版本
 echo   uninstall            卸载 OA-NSDIY
 echo   list-versions        列出可用版本
 echo.
 echo 选项:
 echo   -v, --version 版本    指定要安装的版本号 (例如: v1.0.0)
 echo   -y, --yes            跳过确认提示 (用于卸载)
+echo   --purge              卸载时同时删除数据和配置目录
 echo.
 echo 示例:
 echo   %~nx0                        安装最新版本
 echo   %~nx0 install -v v1.0.0      安装指定版本
 echo   %~nx0 upgrade                升级到最新
+echo   %~nx0 rollback v1.0.0        回退到 v1.0.0
 echo   %~nx0 uninstall              卸载
+echo   %~nx0 uninstall --purge      卸载并删除数据
 echo   %~nx0 list-versions          列出可用版本
 echo.
 exit /b 0

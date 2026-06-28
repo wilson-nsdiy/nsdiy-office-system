@@ -24,15 +24,15 @@ if not defined VERSION set "VERSION=dev"
 if "%TARGET_OS%"=="linux" (
     set "GOOS=linux"
     set "GOARCH=amd64"
-    set "OUTPUT_NAME=server-linux-amd64"
+    set "OUTPUT_NAME=oa-nsdiy-linux-amd64"
 ) else if "%TARGET_OS%"=="darwin" (
     set "GOOS=darwin"
     set "GOARCH=arm64"
-    set "OUTPUT_NAME=server-darwin-arm64"
+    set "OUTPUT_NAME=oa-nsdiy-darwin-arm64"
 ) else if "%TARGET_OS%"=="" (
     for /f "delims=" %%o in ('go env GOOS') do set "GOOS=%%o"
     for /f "delims=" %%a in ('go env GOARCH') do set "GOARCH=%%a"
-    set "OUTPUT_NAME=server"
+    set "OUTPUT_NAME=oa-nsdiy"
 ) else (
     echo [ERROR] 不支持的目标平台: %TARGET_OS% ^(仅支持 linux/darwin^)
     exit /b 1
@@ -95,8 +95,8 @@ echo   版本: %VERSION%
 echo.
 echo 部署步骤:
 echo   1. 上传 %OUTPUT_NAME%.exe 到目标服务器
-echo   2. 配置环境变量: copy deploy\.env.example deploy\.env
-echo   3. 启动服务: %OUTPUT_NAME%.exe
+echo   2. Windows: 使用 install.bat 安装脚本
+echo   3. 或手动部署: copy deploy\.env.example deploy\.env ^&^& %OUTPUT_NAME%.exe
 echo.
 
 endlocal
